@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Cylinder Text</title>
+<style>
+  :root {
+    --bg: #f3f4f6; --card: #fff; --line: #d6d9de; --text: #1f2328; --muted: #6b7280;
+    --accent: #0696d7; --accent-soft: #e4f3fb; --bad: #c0392b; --radius: 6px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { font: 12px/1.4 "Segoe UI", Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text);
+         display: flex; flex-direction: column; }
+  main { flex: 1; overflow-y: auto; padding: 8px 10px 12px; }
+  h3 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 6px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; margin-bottom: 8px; }
+  .card.sub { background: #fafbfc; }
+  label.f { display: grid; grid-template-columns: 112px 1fr; align-items: center; gap: 6px; margin: 4px 0; }
+  label.f.slider { grid-template-columns: 112px 1fr 38px; }
+  label.check { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+  input, select, textarea { font: inherit; padding: 3px 6px; border: 1px solid var(--line); border-radius: 4px; background: #fff; width: 100%; min-width: 0; }
+  input[type=range] { padding: 0; border: 0; background: none; accent-color: var(--accent); }
+  input[type=checkbox] { width: auto; accent-color: var(--accent); }
+  input:disabled { color: var(--muted); background: #f2f2f2; }
+  output { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  textarea { resize: vertical; font-size: 15px; }
+  button { font: inherit; padding: 4px 10px; border: 1px solid var(--line); border-radius: 4px; background: #fff; cursor: pointer; }
+  button:hover { border-color: #b5bac2; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; padding: 7px; width: 100%; }
+  button.primary:disabled { opacity: .55; cursor: default; }
+  .row { display: flex; gap: 6px; align-items: center; }
+  .note { color: var(--muted); white-space: pre-wrap; font-size: 11px; }
+  .hidden { display: none !important; }
+
+  /* Target and text blocks */
+  #targetCard { display: flex; gap: 8px; align-items: center; }
+  #target { color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #target.set { color: var(--text); }
+  #blocks { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 999px;
+          padding: 2px 4px 2px 10px; background: #fff; cursor: pointer; max-width: 150px; }
+  .chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip.on { border-color: var(--accent); background: var(--accent-soft); }
+  .chip b { font-weight: 400; color: var(--muted); padding: 0 4px; border-radius: 999px; }
+  .chip b:hover { background: #fde2e1; color: var(--bad); }
+  .chip.add { padding: 2px 10px; color: var(--accent); }
+
+  /* Tabs */
+  nav.tabs { display: flex; border-bottom: 1px solid var(--line); margin: 0 0 8px; }
+  nav.tabs button { flex: 1; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none;
+                    padding: 6px 0; color: var(--muted); font-weight: 600; }
+  nav.tabs button.on { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Segmented control */
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; border-radius: 0; padding: 5px 4px; background: #fff; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--accent); color: #fff; }
+
+  /* Font list */
+  .combo { position: relative; }
+  #fonts { position: absolute; left: 0; right: 0; top: 100%; z-index: 5; margin: 2px 0 0; padding: 2px 0;
+    list-style: none; max-height: 280px; overflow-y: auto; background: #fff; border: 1px solid var(--line);
+    border-radius: 4px; box-shadow: 0 4px 12px rgba(0, 0, 0, .15); }
+  #fonts li { display: flex; align-items: baseline; gap: 8px; padding: 4px 8px; cursor: pointer; }
+  #fonts li span:first-child { font-size: 17px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+  #fonts li span.kind { font: 10px "Segoe UI", Arial, sans-serif; color: var(--muted); }
+  #fonts li.more { color: var(--muted); font-size: 11px; cursor: default; }
+  #fonts li.on { background: var(--accent-soft); }
+
+  canvas.view { display: block; width: 100%; border: 1px solid var(--line); border-radius: 4px; background: #fff; }
+  #profile { height: 96px; }
+  #heightmap { image-rendering: auto; }
+
+  footer { background: var(--card); border-top: 1px solid var(--line); padding: 8px 10px; }
+  footer .opts { display: flex; flex-wrap: wrap; gap: 0 12px; }
+  #status { min-height: 1.4em; margin-top: 6px; white-space: pre-wrap; }
+  #status.bad { color: var(--bad); }
+</style>
+</head>
+<body>
+<main>
+
+<div class="card" id="targetCard">
+  <button id="pick">Pick face / body</button>
+  <span id="target">Nothing picked yet</span>
+</div>
+
+<div id="blocks"></div>
+
+<nav class="tabs">
+  <button data-tab="text" class="on">Text</button>
+  <button data-tab="shape">Shape</button>
+  <button data-tab="extras">Extras</button>
+  <button data-tab="place">Place</button>
+</nav>
+
+<!-- ======================= Text ======================= -->
+<section data-tab="text">
+  <div class="card">
+    <textarea id="text" rows="2">TEXT</textarea>
+    <label class="f" title="Any of the 1,800-odd Google Fonts, or a font installed on this computer: type to search.">Font
+      <span class="row"><span class="combo" style="flex:1"><input id="family" value="Roboto" autocomplete="off"><ul id="fonts" hidden></ul></span>
+      <select id="fontKind" style="width:auto" title="Show only one kind of font in the list">
+        <option value="">All</option><option value="sans-serif">Sans</option><option value="serif">Serif</option>
+        <option value="display">Display</option><option value="handwriting">Script</option><option value="monospace">Mono</option>
+      </select></span></label>
+    <label class="f">Weight
+      <select id="weight">
+        <option>100</option><option>200</option><option>300</option><option selected>400</option>
+        <option>500</option><option>600</option><option>700</option><option>800</option><option>900</option>
+      </select>
+    </label>
+    <label class="f" title="Height of a capital H.">Text height (mm) <input id="heightMm" type="number" value="5" min="0.1" step="0.5"></label>
+    <label class="f" title="Extra space between letters; negative pulls them together.">Letter spacing (mm) <input id="letterMm" type="number" value="0" step="0.05"></label>
+    <label class="f" title="Distance between lines, as a multiple of the text height.">Line spacing <input id="lineSpacing" type="number" value="1.4" min="0.5" step="0.1"></label>
+    <label class="f">Alignment
+      <select id="align"><option value="left">Left</option><option value="center" selected>Centre</option><option value="right">Right</option></select>
+    </label>
+  </div>
+</section>
+
+<!-- ======================= Shape ======================= -->
+<section data-tab="shape" class="hidden">
+  <div class="card">
+    <h3>Edges</h3>
+    <div class="seg" id="modeSeg">
+      <button data-value="smooth" class="on" title="One smooth surface, flush with the cylinder at its edges. Every edge is a curve.">Smooth surface</button>
+      <button data-value="sharp" title="Cut (or added) straight into the body, with exact sharp edges between separate faces, and real fillets if you want them.">Sharp, into the body</button>
+    </div>
+    <div class="note" id="modeNote" style="margin-top:4px"></div>
+  </div>
+
+  <div class="card">
+    <h3>Style</h3>
+    <label class="f">Style
+      <select id="style">
+        <option value="sunk">Letters sunk in</option>
+        <option value="raised">Letters raised</option>
+        <option value="outline">Outline grooves</option>
+        <option value="halo">Halo groove around letters</option>
+        <option value="background">Background sunk, letters stand</option>
+        <option value="plate">Raised plate, letters sunk in it</option>
+      </select>
+    </label>
+    <label class="f" title="How deep the letters sink, or how high they stand. For a sunk background, how deep the background goes.">
+      <span id="depthLabel">Depth (mm)</span> <input id="depthMm" type="number" value="0.5" min="0" step="0.05"></label>
+    <div id="outlineFields" class="card sub hidden">
+      <label class="f">Groove width (mm) <input id="grooveMm" type="number" value="0.3" min="0.02" step="0.05"></label>
+      <label class="f">Number of lines <input id="grooveCount" type="number" value="1" min="1" max="6" step="1"></label>
+      <label class="f" title="Space between neighbouring outline grooves.">Gap between (mm) <input id="grooveGapMm" type="number" value="0.25" min="0" step="0.05"></label>
+      <label class="f" id="groovePosRow">Position
+        <select id="groovePos"><option value="inside">Inside the outline</option><option value="centre" selected>On the outline</option><option value="outside">Outside the outline</option></select>
+      </label>
+      <label class="f hidden" id="haloGapRow" title="Space left between each letter and its halo.">Gap from letters (mm) <input id="haloGapMm" type="number" value="0.3" min="0" step="0.05"></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Profile</h3>
+    <label class="f">Preset <select id="preset"></select></label>
+    <p class="note" style="margin:2px 0 6px">Shares are of each stroke (or groove), from its edge (0%) to its middle (100%), so they look the same on thin and thick strokes.</p>
+    <label class="f slider" title="How far in from the edge the wall reaches the floor. 100 = the walls meet in the middle (a V, or a U with a rounded floor).">
+      Wall width (%) <input id="wallPct" type="range" min="5" max="100" value="60"><output for="wallPct"></output></label>
+    <div id="smoothEdges">
+      <label class="f slider" title="How much of the wall curves over at the top. 0 is a sharp edge.">
+        Rim roundness <input id="rimRound" type="range" min="0" max="100" value="60"><output for="rimRound"></output></label>
+      <label class="f slider" title="0 nearly a straight chamfer, 50 an even curve, 100 a tight bend.">
+        Rim shape <input id="rimShape" type="range" min="0" max="100" value="50"><output for="rimShape"></output></label>
+      <label class="f slider" title="How much of the wall curves into the floor. 0 is a sharp inside corner.">
+        Floor roundness <input id="floorRound" type="range" min="0" max="100" value="60"><output for="floorRound"></output></label>
+      <label class="f slider" title="0 nearly a straight chamfer, 50 an even curve, 100 a tight bend.">
+        Floor shape <input id="floorShape" type="range" min="0" max="100" value="50"><output for="floorShape"></output></label>
+    </div>
+    <div id="sharpEdges" class="hidden">
+      <label class="f" title="Real fillet on the top edges, made by Fusion after the cut. 0 leaves them perfectly sharp.">Top edge fillet (mm) <input id="rimFilletMm" type="number" value="0" min="0" step="0.02"></label>
+      <label class="f" title="Real fillet where the walls meet the floor. 0 leaves the corner sharp.">Floor fillet (mm) <input id="floorFilletMm" type="number" value="0" min="0" step="0.02"></label>
+    </div>
+    <label class="f slider" title="Positive raises a ridge down the middle of each stroke (V becomes W; 100 reaches the surface). Negative sinks the middle deeper (a U).">
+      Dish ↔ ridge (%) <input id="centrePct" type="range" min="-100" max="100" value="0"><output for="centrePct"></output></label>
+    <label class="f slider" title="How much of the stroke the ridge or dish spans.">
+      Ridge width (%) <input id="centreWidth" type="range" min="5" max="100" value="50"><output for="centreWidth"></output></label>
+    <label class="f slider" title="0 rounded top, 50 a sharp point, 100 a knife edge.">
+      Ridge sharpness <input id="centreSharp" type="range" min="0" max="100" value="50"><output for="centreSharp"></output></label>
+    <label class="f slider" title="0: every stroke full depth. 100: depth follows stroke width, as a V-bit cuts.">
+      Thin strokes shallower <input id="thinPct" type="range" min="0" max="100" value="0"><output for="thinPct"></output></label>
+    <label class="f" title="Moves the edges out from (or in from) the letter outlines.">Grow letters (mm) <input id="growMm" type="number" value="0" step="0.02"></label>
+    <label class="f" title="A final blur over everything; never less than half the resolution.">Smoothing (mm) <input id="smoothMm" type="number" value="0.02" min="0" step="0.01"></label>
+    <label class="f" title="Control-point spacing. Auto fits 8 across half a typical stroke, within the point budget.">Resolution (mm)
+      <span class="row"><input id="resMm" type="number" value="0.05" min="0.01" step="0.01"><input id="resAuto" type="checkbox" checked> Auto</span></label>
+    <canvas id="profile" class="view" title="Cross-section through a typical stroke, as it will be made. Dots are control points."></canvas>
+    <div class="note" id="profileNote"></div>
+  </div>
+</section>
+
+<!-- ======================= Extras ======================= -->
+<section data-tab="extras" class="hidden">
+  <div class="card" id="panelCard">
+    <h3>Panel</h3>
+    <p class="note" style="margin:0 0 4px" id="panelNote">Used by the "background sunk" and "raised plate" styles.</p>
+    <label class="f">Shape
+      <select id="panelShape">
+        <option value="rounded">Rounded rectangle</option><option value="rect">Rectangle</option>
+        <option value="capsule">Capsule</option><option value="oval">Oval</option>
+        <option value="hug">Hug the text</option>
+      </select>
+    </label>
+    <label class="f" title="Space between the text and the panel's edge.">Padding (mm) <input id="panelPadMm" type="number" value="1" min="0" step="0.1"></label>
+    <label class="f" id="panelRadiusRow" title="Corner radius for the rounded rectangle.">Corner radius (mm) <input id="panelRadiusMm" type="number" value="0.8" min="0" step="0.1"></label>
+    <label class="f" title="Sideways width of the panel's edge slope.">Edge width (mm) <input id="panelEdgeMm" type="number" value="0.3" min="0.01" step="0.05"></label>
+    <label class="f" id="plateRow" title="How far the plate stands above the surface.">Plate height (mm) <input id="plateMm" type="number" value="0.4" min="0" step="0.05"></label>
+    <label class="f" title="A raised rim round the panel. 0 for none.">Lip height (mm) <input id="lipMm" type="number" value="0" min="0" step="0.05"></label>
+    <label class="f">Lip width (mm) <input id="lipWidthMm" type="number" value="0.5" min="0.05" step="0.05"></label>
+  </div>
+
+  <div class="card">
+    <h3>Drop shadow</h3>
+    <label class="f" title="A shallow cut beside the letters, so they look lifted. 0 for none. Not used with the panel styles.">Depth (mm) <input id="shadowMm" type="number" value="0" min="0" step="0.05"></label>
+    <label class="f" title="How far the shadow sits to the right, in the text's own direction.">Offset right (mm) <input id="shadowXMm" type="number" value="0.25" step="0.05"></label>
+    <label class="f" title="How far the shadow sits down, in the text's own direction.">Offset down (mm) <input id="shadowYMm" type="number" value="0.25" step="0.05"></label>
+  </div>
+
+  <div class="card">
+    <h3>Texture</h3>
+    <label class="f">Pattern
+      <select id="texture">
+        <option value="none">None</option><option value="stipple">Stipple</option><option value="hatch">Crosshatch</option>
+        <option value="knurl">Diamond knurl</option><option value="dimples">Dimples</option><option value="ribs">Ribs</option>
+      </select>
+    </label>
+    <label class="f">On
+      <select id="textureOn"><option value="letters">Letter floors / tops</option><option value="background">Background / plate</option></select>
+    </label>
+    <label class="f" title="Spacing of the pattern.">Pitch (mm) <input id="texPitchMm" type="number" value="0.4" min="0.05" step="0.05"></label>
+    <label class="f" title="How deep the pattern goes into the floor or top.">Depth (mm) <input id="texDepthMm" type="number" value="0.08" min="0" step="0.01"></label>
+    <label class="f">Angle (°) <input id="texAngle" type="number" value="45" step="5"></label>
+  </div>
+
+  <div class="card">
+    <h3>Depth variation</h3>
+    <label class="f" title="Depth at the start of the text, as a share of the full depth.">Start (%) <input id="fadeStart" type="number" value="100" min="0" step="10"></label>
+    <label class="f" title="Depth at the end of the text.">End (%) <input id="fadeEnd" type="number" value="100" min="0" step="10"></label>
+    <label class="f" title="A share for each line in turn, e.g. 100, 70.">Per line (%) <input id="lineDepths" placeholder="e.g. 100, 70"></label>
+  </div>
+</section>
+
+<!-- ======================= Place ======================= -->
+<section data-tab="place" class="hidden">
+  <div class="card">
+    <label class="f">Direction
+      <select id="direction">
+        <option value="lengthways" selected>Lengthways (along the axis)</option>
+        <option value="around">Around the cylinder</option>
+      </select>
+    </label>
+    <label class="f" title="Round the axis; positive to your right as you look at it.">Angle (°) <input id="angleDeg" type="number" value="0" step="5"></label>
+    <label class="f" title="Along the axis from the middle of the face.">Axial offset (mm) <input id="offsetMm" type="number" value="0" step="0.5"></label>
+    <label class="check"><input id="flip" type="checkbox"> Flip upside down</label>
+  </div>
+  <div class="card">
+    <h3>Height map</h3>
+    <canvas id="heightmap" class="view" width="1" height="1" title="Shaded relief of the height map"></canvas>
+    <div class="note" id="info" style="margin-top:4px"></div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="opts">
+    <label class="check" title="Shows the result in Fusion as you change things, without changing the design."><input id="live" type="checkbox" checked> Live preview</label>
+    <label class="check" title="Draw the whole body in the preview. Off: just the text area, so you can see how deep it goes. Also off while you have hidden the body yourself."><input id="wholeBody" type="checkbox" checked> Whole body in preview</label>
+    <label class="check" title="Replace what the last Generate made instead of adding to it."><input id="replace" type="checkbox" checked> Replace previous</label>
+    <label class="check" id="singleRow" title="One face instead of many small ones (smooth surface). Same shape; far slower for big text."><input id="singleFace" type="checkbox"> One face (slow)</label>
+  </div>
+  <button id="generate" class="primary">Generate</button>
+  <div id="status"></div>
+</footer>
+
+<script src="google-fonts.js"></script>
+<script>
+// ===========================================================================
+// Settings
+// ===========================================================================
+
+// The font list offers every Google Fonts family (google-fonts.js, most
+// popular first). Any installed font's name can be typed in too.
+const FONT_KINDS = new Map(GOOGLE_FONTS);
+
+const PLAIN = { rimShape: 50, floorShape: 50, centrePct: 0, centreWidth: 50, centreSharp: 50,
+  thinPct: 0, growMm: 0, smoothMm: 0.02 };
+const PRESETS = {
+  rounded: { label: "Rounded", ...PLAIN, wallPct: 60, rimRound: 60, floorRound: 60 },
+  soft:    { label: "Soft pillow", ...PLAIN, wallPct: 100, rimRound: 100, floorRound: 100, growMm: 0.05, smoothMm: 0.04 },
+  crisp:   { label: "Crisp", ...PLAIN, wallPct: 15, rimRound: 20, floorRound: 20, smoothMm: 0.01 },
+  flat:    { label: "Flat floor, rounded rim", ...PLAIN, wallPct: 50, rimRound: 100, floorRound: 0 },
+  paint:   { label: "Paint fill (flat floor, steep walls)", ...PLAIN, wallPct: 12, rimRound: 0, floorRound: 0, smoothMm: 0.01 },
+  ugroove: { label: "U-groove", ...PLAIN, wallPct: 100, rimRound: 25, floorRound: 100 },
+  chisel:  { label: "Chisel (V, all full depth)", ...PLAIN, wallPct: 100, rimRound: 0, floorRound: 0, smoothMm: 0.01 },
+  // Depth follows stroke width, so the walls slope the same everywhere, as a V-bit cuts.
+  vcarve:  { label: "V-carve", ...PLAIN, wallPct: 100, rimRound: 0, floorRound: 0, thinPct: 100, smoothMm: 0.01 },
+  wcarve:  { label: "W-carve", ...PLAIN, wallPct: 100, rimRound: 0, floorRound: 0, centrePct: 60,
+             centreWidth: 55, centreSharp: 50, smoothMm: 0.01 },
+  inline:  { label: "Inline (two grooves)", ...PLAIN, wallPct: 45, rimRound: 40, floorRound: 40, centrePct: 100,
+             centreWidth: 60, centreSharp: 0 },
+};
+const PROFILE_FIELDS = ["wallPct", "rimRound", "rimShape", "floorRound", "floorShape",
+  "centrePct", "centreWidth", "centreSharp", "thinPct", "growMm", "smoothMm"];
+
+// Everything a text block has of its own. Mode and the output options are
+// shared by all blocks.
+const BLOCK_FIELDS = ["text", "family", "weight", "heightMm", "letterMm", "lineSpacing", "align",
+  "style", "depthMm", "grooveMm", "grooveCount", "grooveGapMm", "groovePos", "haloGapMm",
+  "preset", ...PROFILE_FIELDS, "resMm", "resAuto",
+  "panelShape", "panelPadMm", "panelRadiusMm", "panelEdgeMm", "plateMm", "lipMm", "lipWidthMm",
+  "shadowMm", "shadowXMm", "shadowYMm",
+  "texture", "textureOn", "texPitchMm", "texDepthMm", "texAngle",
+  "fadeStart", "fadeEnd", "lineDepths",
+  "direction", "angleDeg", "offsetMm", "flip"];
+const SHARED_FIELDS = ["rimFilletMm", "floorFilletMm", "live", "wholeBody", "replace", "singleFace"];
+// Fields that only move the block on the cylinder: changing them needs no new height map.
+const PLACE_FIELDS = ["direction", "angleDeg", "offsetMm", "flip"];
+
+// Most control points to send per block. The surface is built in small faces,
+// so this is about 2.5 s to Generate and half a second per preview.
+const MAX_POINTS = 200000;
+// Control points across half a typical stroke when the resolution is Auto.
+// Sharp walls are straight, so half as many hold them, and far fewer
+// faces result: 7 wall faces for "Ag" rather than 60.
+const AUTO_POINTS_ACROSS = 8, AUTO_POINTS_ACROSS_SHARP = 4;
+// Sharp mode: how far (mm) the cutting surfaces stay clear of the surface
+// where they do nothing, and how far a cut reaches out past the surface. The
+// walls carry on straight until they are that far clear, so the bend where
+// they level off is well away from the edge they make: closer, and the
+// smoothing bent the wall right at the edge, where Fusion could no longer
+// fit a fillet. Raises start exactly at the surface instead: one reaching
+// in under it made Fusion's Join throw out spikes and fins at sharp corners
+// (the apex of an A), and joining along the same cylinder is reliable.
+const SHARP_CLEAR = 0.6, SHARP_PAST = 0.05;
+// Parts that would otherwise meet exactly at an edge (a raised letter and
+// its shadow, a panel and its lip) are kept this far (mm) apart or made to
+// overlap by it: Fusion's Booleans fail on surfaces that only just touch.
+const SHARP_GAP = 0.03;
+
+const $ = id => document.getElementById(id);
+
+// ===========================================================================
+// Blocks and the form
+// ===========================================================================
+
+let mode = "smooth";
+let blocks = [];         // [{ id, params, map, mapKey, mapId }]
+let current = 0;
+let nextBlockId = 1;
+let cylinder = null;     // what the last pick said about the cylinder
+
+function readForm() {
+  const p = {};
+  for (const id of [...BLOCK_FIELDS, ...SHARED_FIELDS]) {
+    const el = $(id);
+    p[id] = el.type === "checkbox" ? el.checked
+      : (el.type === "number" || el.type === "range") ? parseFloat(el.value) : el.value;
+  }
+  p.family = p.family.trim();
+  return p;
+}
+
+function writeForm(p) {
+  for (const id of BLOCK_FIELDS) {
+    if (!(id in p)) continue;
+    const el = $(id);
+    if (el.type === "checkbox") el.checked = p[id]; else el.value = p[id];
+  }
+  showSliderValues();
+  styleFamilyBox();
+  committed = $("family").value;
+  showRelevant();
+}
+
+// The current block's settings with the shared ones.
+function blockParams(block) {
+  const shared = readForm();
+  const p = Object.assign({}, block.params);
+  for (const id of SHARED_FIELDS) p[id] = shared[id];
+  p.mode = mode;
+  return p;
+}
+
+function saveForm() {
+  const p = readForm();
+  const block = blocks[current];
+  for (const id of BLOCK_FIELDS) block.params[id] = p[id];
+}
+
+function addBlock(params) {
+  blocks.push({ id: nextBlockId++, params, map: null, mapKey: null, mapId: 0 });
+}
+
+function drawBlocks() {
+  const bar = $("blocks");
+  bar.innerHTML = "";
+  blocks.forEach((block, k) => {
+    const chip = document.createElement("span");
+    chip.className = "chip" + (k === current ? " on" : "");
+    const name = document.createElement("span");
+    name.textContent = (block.params.text || "").split("\n")[0].trim() || "(empty)";
+    chip.append(name);
+    if (blocks.length > 1) {
+      const close = document.createElement("b");
+      close.textContent = "×";
+      close.title = "Remove this text";
+      close.onclick = e => { e.stopPropagation(); removeBlock(k); };
+      chip.append(close);
+    }
+    chip.onclick = () => selectBlock(k);
+    chip.title = "Edit this text";
+    bar.append(chip);
+  });
+  const add = document.createElement("span");
+  add.className = "chip add";
+  add.textContent = "+ Add text";
+  add.title = "Another block of text, with its own settings and position";
+  add.onclick = () => {
+    saveForm();
+    const p = Object.assign({}, blocks[current].params, { text: "TEXT" });
+    p.offsetMm = (parseFloat(p.offsetMm) || 0) + 2 * (parseFloat(p.heightMm) || 5);
+    addBlock(p);
+    selectBlock(blocks.length - 1);
+  };
+  bar.append(add);
+}
+
+function selectBlock(k) {
+  saveForm();
+  current = k;
+  writeForm(blocks[k].params);
+  drawBlocks();
+  schedule();
+}
+
+function removeBlock(k) {
+  saveForm();
+  blocks.splice(k, 1);
+  current = Math.min(current, blocks.length - 1);
+  writeForm(blocks[current].params);
+  drawBlocks();
+  schedule();
+}
+
+function say(message, bad) {
+  $("status").textContent = message;
+  $("status").className = bad ? "bad" : "";
+}
+
+function showSliderValues() {
+  for (const out of document.querySelectorAll("output")) out.textContent = $(out.htmlFor).value;
+}
+
+// Show only the fields that matter for this mode and style.
+function showRelevant() {
+  const style = $("style").value;
+  const sharp = mode === "sharp";
+  $("smoothEdges").classList.toggle("hidden", sharp);
+  $("sharpEdges").classList.toggle("hidden", !sharp);
+  $("singleRow").classList.toggle("hidden", sharp);
+  $("outlineFields").classList.toggle("hidden", style !== "outline" && style !== "halo");
+  $("groovePosRow").classList.toggle("hidden", style !== "outline");
+  $("haloGapRow").classList.toggle("hidden", style !== "halo");
+  $("depthLabel").textContent = style === "raised" ? "Height (mm)"
+    : style === "background" ? "Background depth (mm)" : "Depth (mm)";
+  const panelUsed = style === "background" || style === "plate";
+  $("panelCard").style.opacity = panelUsed ? 1 : 0.55;
+  $("panelNote").textContent = panelUsed ? "The area the " + (style === "plate" ? "plate covers." : "background is sunk in.")
+    : "Used by the \"background sunk\" and \"raised plate\" styles.";
+  $("plateRow").classList.toggle("hidden", style !== "plate");
+  $("panelRadiusRow").classList.toggle("hidden", $("panelShape").value !== "rounded");
+  $("modeNote").textContent = sharp
+    ? "Cut into (or added to) the body with exact sharp edges. Walls run straight from the top edge to the floor; round the edges with real fillets below."
+    : "A separate surface that blends into the cylinder; every edge is a curve.";
+  for (const b of $("modeSeg").children) b.classList.toggle("on", b.dataset.value === mode);
+}
+
+// ===========================================================================
+// Fonts
+// ===========================================================================
+
+const stylesheets = new Map();  // "family|weight" -> Promise<boolean>
+
+// Adds Google's stylesheet for the family. Asks for the weight first and, if
+// the family does not come in that weight, for the family's default.
+function googleStylesheet(family, weight) {
+  const key = family + "|" + weight;
+  if (!stylesheets.has(key)) {
+    const name = encodeURIComponent(family).replace(/%20/g, "+");
+    const tryLink = query => new Promise(resolve => {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = `https://fonts.googleapis.com/css2?${query}&display=block`;
+      link.onload = () => resolve(true);
+      link.onerror = () => { link.remove(); resolve(false); };
+      document.head.appendChild(link);
+    });
+    stylesheets.set(key, tryLink(`family=${name}:wght@${weight}`)
+      .then(ok => ok || tryLink(`family=${name}`)));
+  }
+  return stylesheets.get(key);
+}
+
+// Whether text drawn in the family differs from the generic fallbacks, which
+// is the only way a page can tell an installed font is really there.
+function fontAvailable(family, weight) {
+  const ctx = document.createElement("canvas").getContext("2d");
+  const sample = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  return ["monospace", "serif"].some(generic => {
+    ctx.font = `${weight} 72px ${generic}`;
+    const plain = ctx.measureText(sample).width;
+    ctx.font = `${weight} 72px "${family}", ${generic}`;
+    return ctx.measureText(sample).width !== plain;
+  });
+}
+
+async function ensureFont(p) {
+  await googleStylesheet(p.family, p.weight);
+  await document.fonts.load(`${p.weight} 100px "${p.family}"`, p.text);
+  if (!fontAvailable(p.family, p.weight)) {
+    throw new Error(`Font "${p.family}" was not found on Google Fonts or on this computer.`);
+  }
+}
+
+// ===========================================================================
+// Profiles: depth as a fraction, across a stroke from its edge (s = 0) to its
+// centre line (s = 1).
+// ===========================================================================
+
+// Shape slider to a rational Bézier weight: 0 gives 1/16 (nearly straight),
+// 50 gives 1 (a plain Bézier) and 100 gives 16 (hugs the control point).
+const weight = shape => Math.pow(2, (shape - 50) / 12.5);
+
+// The smooth wall: one rational cubic Bézier from the edge (0, 0) to where
+// the floor starts (w, 1). Rounding moves the rim's control point in along
+// the surface and the floor's back along the floor; each can take the whole
+// wall, and if together they ask for more they share it. The control
+// points' x never go backwards, so neither does the curve.
+function wallProfile(w, rimRound, rimShape, floorRound, floorShape) {
+  let rim = rimRound / 100, floor = floorRound / 100;
+  if (rim + floor > 1) {
+    const total = rim + floor;
+    rim /= total;
+    floor /= total;
+  }
+  const P = [[0, 0], [rim * w, 0], [w - floor * w, 1], [w, 1]];
+  const k = [1, weight(rimShape), weight(floorShape), 1];
+  const n = 512, xs = new Float64Array(n + 1), ys = new Float64Array(n + 1);
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, u = 1 - t, b = [u * u * u, 3 * t * u * u, 3 * t * t * u, t * t * t];
+    let x = 0, y = 0, sum = 0;
+    for (let j = 0; j < 4; j++) {
+      const c = b[j] * k[j];
+      x += c * P[j][0]; y += c * P[j][1]; sum += c;
+    }
+    xs[i] = x / sum; ys[i] = y / sum;
+  }
+  return s => {
+    if (s <= 0) return 0;
+    if (s >= xs[n]) return 1;
+    let lo = 0, hi = n;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (xs[mid] <= s) lo = mid; else hi = mid;
+    }
+    const span = xs[hi] - xs[lo];
+    return span > 0 ? ys[lo] + (ys[hi] - ys[lo]) * (s - xs[lo]) / span : ys[hi];
+  };
+}
+
+// The cross-section of one stroke (or groove): depth as a fraction of the
+// full depth at s, for a stroke `ratio` as wide as the thickest.
+//
+// Smooth: the wall above, flat after it, then the centre ridge or dish.
+// Sharp: a straight wall that carries on past both ends: above the surface
+// for s < 0 and below the floor past the wall. The floor and surface trim it
+// exactly, which is what makes those edges sharp.
+function makeStroke(p, sharp) {
+  const w = p.wallPct / 100;
+  const wall = sharp ? (s => s / w)
+    : wallProfile(w, p.rimRound, p.rimShape, p.floorRound, p.floorShape);
+  const k = p.centrePct / 100, width = p.centreWidth / 100, thin = p.thinPct / 100;
+  // The ridge or dish along the centre line: (1 - x^q)^2 is level where it
+  // meets the rest, and its top is rounded for q = 2, a sharp point for
+  // q = 1, and a knife edge with hollow sides below that.
+  const q = Math.pow(2, 1 - p.centreSharp / 50);
+  return (s, ratio) => {
+    if (!sharp && !(s > 0)) return 0;
+    s = Math.min(s, 1);
+    let depth = wall(s);
+    if (k !== 0 && s > 0) {
+      const x = (1 - s) / width;
+      if (x < 1) depth *= 1 - k * (1 - Math.pow(x, q)) ** 2;
+    }
+    return thin > 0 ? depth * Math.pow(Math.min(ratio, 1), thin) : depth;
+  };
+}
+
+// An edge of fixed width (panels, lips, shadows): 0 outside, 1 once `edge`
+// mm inside. Smooth uses the wall's rounding; sharp is a straight slope that
+// carries on both ways.
+function makeEdge(p, sharp, edge) {
+  if (sharp) return d => d / edge;
+  const wall = wallProfile(1, p.rimRound, p.rimShape, p.floorRound, p.floorShape);
+  return d => wall(d / edge);
+}
+
+// ===========================================================================
+// Textures: 0 to 1, in mm across the unrolled surface.
+// ===========================================================================
+
+function makeTexture(p) {
+  const pitch = Math.max(p.texPitchMm, 0.01), a = p.texAngle * Math.PI / 180;
+  const ca = Math.cos(a), sa = Math.sin(a);
+  const frac = t => t - Math.floor(t);
+  const tri = t => 1 - 2 * Math.abs(frac(t) - 0.5);                // 1 on the line, 0 halfway
+  const groove = t => { const c = Math.cos(2 * Math.PI * t); return c > 0 ? c * c : 0; };
+  const hash = (i, j) => frac(Math.sin(i * 127.1 + j * 311.7) * 43758.5453);
+  switch (p.texture) {
+    case "ribs":
+      return (x, y) => groove((x * ca + y * sa) / pitch);
+    case "hatch":
+      return (x, y) => Math.max(groove((x * ca + y * sa) / pitch), groove((x * sa - y * ca) / pitch));
+    case "knurl":
+      // Diamonds: the lower of two crossing triangle waves gives pyramids.
+      return (x, y) => Math.min(tri((x * ca + y * sa) / pitch + 0.5), tri((-x * sa + y * ca) / pitch + 0.5));
+    case "dimples": {
+      // A hexagonal grid of round dimples.
+      const r = 0.42 * pitch, rowH = pitch * Math.sqrt(3) / 2;
+      return (x, y) => {
+        const u = x * ca + y * sa, v = -x * sa + y * ca;
+        let best = Infinity;
+        const row = Math.round(v / rowH);
+        for (let dr = -1; dr <= 1; dr++) {
+          const rr = row + dr, shift = (rr & 1) ? pitch / 2 : 0;
+          const col = Math.round((u - shift) / pitch);
+          for (let dc = -1; dc <= 1; dc++) {
+            const du = u - ((col + dc) * pitch + shift), dv = v - rr * rowH;
+            best = Math.min(best, du * du + dv * dv);
+          }
+        }
+        return Math.max(0, 1 - best / (r * r));
+      };
+    }
+    case "stipple": {
+      // A dot in each grid cell, nudged about at random.
+      const r = 0.3 * pitch;
+      return (x, y) => {
+        const ci = Math.floor(x / pitch), cj = Math.floor(y / pitch);
+        let best = Infinity;
+        for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+          const i = ci + di, j = cj + dj;
+          const cx = (i + 0.2 + 0.6 * hash(i, j)) * pitch, cy = (j + 0.2 + 0.6 * hash(j + 17, i)) * pitch;
+          best = Math.min(best, (x - cx) ** 2 + (y - cy) ** 2);
+        }
+        return best < r * r ? (1 - best / (r * r)) ** 2 : 0;
+      };
+    }
+  }
+  return null;
+}
+
+// ===========================================================================
+// The text, drawn and measured. Cached, since only the text, font, size,
+// spacing and room around it change it.
+// ===========================================================================
+
+let rasterCache = { key: null, value: null };
+
+// How much room the style needs around the ink, in mm, before blur and grid.
+function roomNeeded(p) {
+  let room = Math.max(0, p.growMm);
+  const groove = p.grooveCount * p.grooveMm + Math.max(0, p.grooveCount - 1) * p.grooveGapMm;
+  if (p.style === "outline" && p.groovePos !== "inside") room = Math.max(room, groove);
+  if (p.style === "halo") room = Math.max(room, p.haloGapMm + groove);
+  if (p.style === "background" || p.style === "plate") {
+    room = Math.max(room, p.panelPadMm + (p.lipMm > 0 ? p.lipWidthMm : 0));
+  }
+  if (p.shadowMm > 0) room = Math.max(room, Math.hypot(p.shadowXMm, p.shadowYMm));
+  return room;
+}
+
+async function raster(p) {
+  const coarsest = p.resAuto ? p.heightMm / 25 : p.resMm;
+  const blur = Math.max(p.smoothMm, coarsest / 2);
+  const roomMm = roomNeeded(p) + 3 * blur + 4 * coarsest + (p.mode === "sharp" ? 0.1 : 0);
+  const key = JSON.stringify([p.text, p.family, p.weight, p.heightMm, p.letterMm, p.lineSpacing,
+                              p.align, p.resAuto ? "auto" : p.resMm, roomMm.toFixed(4)]);
+  if (rasterCache.key === key) return rasterCache.value;
+  await ensureFont(p);
+
+  // Pixels per mm: fine enough to measure the strokes well, and finer than
+  // the grid; at most about 8 million pixels.
+  let ppm = Math.max(250 / p.heightMm, p.resAuto ? 0 : 3 / p.resMm);
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  const font = px => `${p.weight} ${px}px "${p.family}"`;
+  const lines = p.text.split("\n");
+  let fontPx, lineStep, margin, boxes, left, top, W, H;
+  const spacing = () => { if ("letterSpacing" in ctx) ctx.letterSpacing = `${p.letterMm * ppm}px`; };
+  const layout = () => {
+    // Size the font so a capital H is the text height.
+    ctx.font = font(100);
+    fontPx = 100 * p.heightMm * ppm / ctx.measureText("H").actualBoundingBoxAscent;
+    lineStep = p.heightMm * p.lineSpacing * ppm;
+    ctx.font = font(fontPx);
+    spacing();
+    ctx.textAlign = p.align;
+    boxes = lines.map((line, k) => {
+      if (!line.trim()) return null;
+      const m = ctx.measureText(line);
+      return { left: -m.actualBoundingBoxLeft, right: m.actualBoundingBoxRight,
+               top: k * lineStep - m.actualBoundingBoxAscent, bottom: k * lineStep + m.actualBoundingBoxDescent };
+    });
+    const real = boxes.filter(Boolean);
+    left = Math.min(...real.map(b => b.left)); top = Math.min(...real.map(b => b.top));
+    const right = Math.max(...real.map(b => b.right)), bottom = Math.max(...real.map(b => b.bottom));
+    margin = roomMm * ppm + 2;
+    W = Math.ceil(right - left + 2 * margin);
+    H = Math.ceil(bottom - top + 2 * margin);
+  };
+  if (!lines.some(l => l.trim())) throw new Error("Type some text.");
+  layout();
+  if (W * H > 8e6) {
+    ppm *= Math.sqrt(8e6 / (W * H));
+    layout();
+  }
+  canvas.width = W;
+  canvas.height = H;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#fff";
+  ctx.font = font(fontPx);
+  spacing();
+  ctx.textAlign = p.align;
+  lines.forEach((line, k) => ctx.fillText(line, margin - left, margin - top + k * lineStep));
+
+  // Signed distance in from the outline, in pixels: each pixel's distance to
+  // the nearest pixel on the other side, less half a pixel for the edge.
+  const rgba = ctx.getImageData(0, 0, W, H).data;
+  const toInk = new Float64Array(W * H), toPaper = new Float64Array(W * H);
+  for (let i = 0; i < W * H; i++) {
+    const ink = rgba[4 * i] >= 128;
+    toInk[i] = ink ? 0 : FAR;
+    toPaper[i] = ink ? FAR : 0;
+  }
+  const nearestEdge = new Int32Array(W * H);
+  squaredDistances(toInk, W, H);
+  squaredDistances(toPaper, W, H, nearestEdge);
+  const inward = new Float32Array(W * H);
+  let thickest = 0;
+  for (let i = 0; i < W * H; i++) {
+    inward[i] = toPaper[i] > 0 ? Math.sqrt(toPaper[i]) - 0.5 : 0.5 - Math.sqrt(toInk[i]);
+    thickest = Math.max(thickest, inward[i]);
+  }
+
+  // Each pixel's stroke half-width: how far in the nearest centre-line pixel
+  // is. Smoothed a little, since neighbouring centre-line pixels differ by
+  // up to a pixel.
+  const centre = centreLines(inward, nearestEdge, W, H);
+  const half = new Float32Array(W * H);
+  const radii = [];
+  if (centre.count > 0) {
+    for (let i = 0; i < W * H; i++) half[i] = inward[centre.nearest[i]];
+    for (let i = 0; i < W * H; i++) if (centre.squared[i] === 0) radii.push(inward[i]);
+    gaussianBlur(half, W, H, 1.5);
+  } else {
+    half.fill(thickest);
+    radii.push(thickest);
+  }
+  radii.sort((a, b) => a - b);
+  // Where each line's text sits, for per-line depths: its baseline row.
+  const baselines = lines.map((_, k) => margin - top + k * lineStep);
+  const value = {
+    W, H, ppm, inward, half, coarsest, baselines, lineStep,
+    typical: radii[Math.floor(radii.length / 4)], thickest,
+    // The ink's own extent, in pixels, for panels and the depth fade.
+    ink: { x0: margin, x1: W - margin, y0: margin, y1: H - margin },
+  };
+  rasterCache = { key, value };
+  return value;
+}
+
+// ===========================================================================
+// Height maps. Offsets are in mm out from the surface (toward the air):
+// negative is into the material.
+//
+// Smooth mode: one offset field, the sum of every part.
+// Sharp mode: a list of layers, each a cut or a raise with its wall field
+// (the surface that makes its walls, clear of the work where it does
+// nothing) and the level it stops at (or a field for one that isn't flat).
+// ===========================================================================
+
+function parseLineDepths(text) {
+  return (text || "").split(/[,\s]+/).filter(Boolean).map(Number).filter(Number.isFinite);
+}
+
+async function heightMap(p) {
+  if (!(p.heightMm > 0)) throw new Error("Text height must be above zero.");
+  if (!p.resAuto && !(p.resMm > 0)) throw new Error("Resolution must be above zero.");
+  if (!(p.smoothMm >= 0)) throw new Error("Smoothing can't be negative.");
+  for (const k of ["depthMm", "growMm", "letterMm", "lineSpacing"]) {
+    if (!Number.isFinite(p[k])) throw new Error("Check the numbers: " + k + " isn't one.");
+  }
+  const sharp = p.mode === "sharp";
+  const r = await raster(p);
+  const { W, H, ppm, inward, half } = r;
+
+  // Grid spacing: Auto puts AUTO_POINTS_ACROSS control points across half a
+  // typical stroke (and enough for a texture), then backs off to stay within
+  // the point budget.
+  const widthMm = (W - 1) / ppm, heightMm = (H - 1) / ppm;
+  const count = res => (Math.round(widthMm / res) + 1) * (Math.round(heightMm / res) + 1);
+  let res = p.resMm, resLimited = false;
+  if (p.resAuto) {
+    const across = sharp ? AUTO_POINTS_ACROSS_SHARP : AUTO_POINTS_ACROSS;
+    res = Math.max(0.005, r.typical / ppm / across);
+    // Grooves: the same number of points across half a groove's width, near enough.
+    if (p.style === "outline" || p.style === "halo") res = Math.min(res, p.grooveMm / across);
+    if (p.texture !== "none") res = Math.min(res, p.texPitchMm / 8);
+    res = Math.min(res, r.coarsest);
+  }
+  if (count(res) > MAX_POINTS) {
+    if (!p.resAuto) {
+      throw new Error(`${count(res)} control points is too many (limit ${MAX_POINTS}). ` +
+        "Increase the resolution value, tick Auto, or shorten the text.");
+    }
+    while (count(res) > MAX_POINTS) res *= 1.02;
+    resLimited = true;
+  }
+  const nu = Math.round(widthMm / res) + 1;
+  const nv = Math.round(heightMm / res) + 1;
+
+  const parts = composer(p, r, sharp);
+  // Work out every field over the drawing, smooth it, and sample it onto the grid.
+  const fields = parts.fields.map(() => new Float32Array(W * H));
+  const sample = new Float64Array(parts.fields.length);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      parts.at(i, x, y, sample);
+      for (let f = 0; f < fields.length; f++) fields[f][i] = sample[f];
+    }
+  }
+  const blurPx = Math.max(p.smoothMm, res / 2) * ppm;
+  const grids = fields.map(field => {
+    gaussianBlur(field, W, H, blurPx);
+    const grid = new Float32Array(nu * nv);
+    for (let j = 0; j < nv; j++) {
+      for (let i = 0; i < nu; i++) {
+        grid[j * nu + i] = bilinear(field, W, H, i * (W - 1) / (nu - 1), j * (H - 1) / (nv - 1));
+      }
+    }
+    return grid;
+  });
+  const out = { nu, nv, widthMm, heightMm, res, resLimited,
+                typicalHalfMm: r.typical / ppm, thickestHalfMm: r.thickest / ppm };
+  if (sharp) {
+    out.layers = parts.layers.map(layer => ({
+      cut: layer.cut, low: layer.low, high: layer.high,
+      wall: grids[layer.wall], cap: layer.cap === undefined ? null : grids[layer.cap] }));
+    out.relief = sharpRelief(out.layers, nu * nv);
+  } else {
+    out.relief = grids[0];
+  }
+  let deepest = 0, highest = 0;
+  for (const v of out.relief) { deepest = Math.min(deepest, v); highest = Math.max(highest, v); }
+  out.deepest = -deepest;
+  out.highest = highest;
+  return out;
+}
+
+// What a sharp result's surface will be at each grid point: the layers
+// applied in order to a surface that starts flat. For the pictures in the
+// palette; Fusion works out the real thing exactly.
+function sharpRelief(layers, n) {
+  const surface = new Float32Array(n);
+  for (const raise of [true, false]) {
+    for (const layer of layers) {
+      if (layer.cut === raise) continue;
+      for (let i = 0; i < n; i++) {
+        const wall = layer.wall[i];
+        if (layer.cut) {
+          const floor = layer.cap ? layer.cap[i] : layer.low;
+          if (wall < layer.high) surface[i] = Math.min(surface[i], Math.max(wall, floor));
+        } else {
+          const top = layer.cap ? layer.cap[i] : layer.high;
+          if (wall > layer.low) surface[i] = Math.max(surface[i], Math.min(wall, top));
+        }
+      }
+    }
+  }
+  return surface;
+}
+
+// Everything the style needs, worked out per pixel. Returns the fields and,
+// for sharp mode, which field is which layer's wall or cap. `at` fills
+// `sample` with one value per field for pixel i at (x, y).
+function composer(p, r, sharp) {
+  const { W, H, ppm, inward, half } = r;
+  const grow = p.growMm;
+  const stroke = makeStroke(p, sharp);
+  const depth = p.depthMm;
+  const thickest = r.thickest / ppm + grow;
+  const texture = p.texture !== "none" && p.texDepthMm > 0 ? makeTexture(p) : null;
+  const lineDepths = parseLineDepths(p.lineDepths);
+  const fadeA = p.fadeStart / 100, fadeB = p.fadeEnd / 100;
+  const ink = r.ink;
+  const varies = fadeA !== 1 || fadeB !== 1 || lineDepths.length > 0;
+
+  // Position in mm, centred on the ink, y up (the image's own directions).
+  const mmX = x => (x - (ink.x0 + ink.x1) / 2) / ppm;
+  const mmY = y => ((ink.y0 + ink.y1) / 2 - y) / ppm;
+  const halfX = (ink.x1 - ink.x0) / 2 / ppm, halfY = (ink.y1 - ink.y0) / 2 / ppm;
+
+  // Depth variation along the text and by line.
+  const variation = (x, y) => {
+    if (!varies) return 1;
+    const t = Math.min(1, Math.max(0, (x - ink.x0) / Math.max(1, ink.x1 - ink.x0)));
+    let v = fadeA + (fadeB - fadeA) * t;
+    if (lineDepths.length) {
+      const k = Math.max(0, Math.min(r.baselines.length - 1,
+        Math.round((y - r.baselines[0] + r.lineStep * 0.35) / r.lineStep)));
+      v *= (lineDepths[Math.min(k, lineDepths.length - 1)] ?? 100) / 100;
+    }
+    return v;
+  };
+
+  // Letters: distance in from the outline and the stroke's half-width, mm.
+  const letterD = i => inward[i] / ppm + grow;
+  const letterHalf = i => Math.max(half[i] / ppm + grow, 1e-6);
+  const letterS = i => letterD(i) / letterHalf(i);
+  const letterRatio = i => letterHalf(i) / Math.max(thickest, 1e-6);
+
+  // Panel: signed distance in from its edge, mm.
+  const pad = p.panelPadMm;
+  const panelD = (i, x, y) => {
+    const hx = halfX + pad, hy = halfY + pad, X = mmX(x), Y = mmY(y);
+    switch (p.panelShape) {
+      case "rect": return Math.min(hx - Math.abs(X), hy - Math.abs(Y));
+      case "oval": return (1 - Math.hypot(X / hx, Y / hy)) * Math.min(hx, hy);
+      case "hug": return inward[i] / ppm + pad;
+      default: {
+        const rad = p.panelShape === "capsule" ? Math.min(hx, hy) : Math.min(p.panelRadiusMm, hx, hy);
+        const qx = Math.abs(X) - (hx - rad), qy = Math.abs(Y) - (hy - rad);
+        return -(Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - rad);
+      }
+    }
+  };
+  const panelEdge = makeEdge(p, sharp, Math.max(p.panelEdgeMm, 0.005));
+
+  // Grooves along the outline: each a band with its own edge and middle.
+  const groove = p.grooveMm, gap = p.grooveGapMm, n = Math.max(1, Math.round(p.grooveCount));
+  const centres = [];
+  for (let k = 0; k < n; k++) {
+    const step = k * (groove + gap) + groove / 2;
+    if (p.style === "halo") centres.push(-(p.haloGapMm + step));
+    else if (p.groovePos === "inside") centres.push(step);
+    else if (p.groovePos === "outside") centres.push(-step);
+    else centres.push(step - (n * groove + (n - 1) * gap) / 2);
+  }
+  // The deepest of the grooves at a point (as a fraction of the depth).
+  const grooveDepth = i => {
+    const d = inward[i] / ppm;
+    let best = sharp ? -Infinity : 0;
+    for (const c of centres) best = Math.max(best, stroke((groove / 2 - Math.abs(d - c)) / (groove / 2), 1));
+    return best;
+  };
+
+  // Shadow: the letters moved over, less the letters themselves.
+  const sx = p.shadowXMm * ppm, sy = p.shadowYMm * ppm;
+  const shadowEdge = makeEdge(p, sharp, Math.max(p.smoothMm * 2, 0.03));
+  const shadowGap = p.style === "raised" ? SHARP_GAP : -SHARP_GAP;
+  const shadowD = (i, x, y) => {
+    const shifted = bilinear(inward, W, H, Math.min(W - 1, Math.max(0, x - sx)), Math.min(H - 1, Math.max(0, y - sy))) / ppm;
+    return Math.min(shifted, -inward[i] / ppm - shadowGap);
+  };
+
+  // Lip: a band just outside the panel.
+  const lipEdge = makeEdge(p, sharp, Math.max(p.lipWidthMm / 2, 0.005));
+
+  const tex = (x, y) => texture ? texture(mmX(x), mmY(y)) : 0;
+  const texOnLetters = texture && p.textureOn === "letters";
+  const texOnBack = texture && p.textureOn === "background";
+
+  if (!sharp) {
+    // One field: offsets, summed.
+    return { fields: ["offset"], at(i, x, y, out) {
+      let o = 0;
+      const v = variation(x, y);
+      const style = p.style;
+      if (style === "sunk" || style === "raised") {
+        const s = letterS(i);
+        const f = s > 0 ? stroke(s, letterRatio(i)) : 0;
+        const sign = style === "raised" ? 1 : -1;
+        o += sign * depth * v * f;
+        if (texOnLetters && f > 0.85) o -= p.texDepthMm * tex(x, y) * smoothstep(0.85, 1, f);
+      } else if (style === "outline" || style === "halo") {
+        const f = grooveDepth(i);
+        o -= depth * v * f;
+        if (texOnLetters && f > 0.85) o -= p.texDepthMm * tex(x, y) * smoothstep(0.85, 1, f);
+      } else if (style === "background") {
+        const s = letterS(i);
+        const standing = s > 0 ? Math.min(1, stroke(s, 1)) : 0;
+        const back = panelEdge(panelD(i, x, y)) * (1 - standing);
+        o -= depth * v * back;
+        if (texOnBack && back > 0.85) o -= p.texDepthMm * tex(x, y) * smoothstep(0.85, 1, back);
+      } else if (style === "plate") {
+        const plate = panelEdge(panelD(i, x, y));
+        o += p.plateMm * plate;
+        if (texOnBack && plate > 0.85) o -= p.texDepthMm * tex(x, y) * smoothstep(0.85, 1, plate);
+        const s = letterS(i);
+        const f = s > 0 ? stroke(s, letterRatio(i)) : 0;
+        o -= depth * v * f;
+        if (texOnLetters && f > 0.85) o -= p.texDepthMm * tex(x, y) * smoothstep(0.85, 1, f);
+      }
+      if ((style === "background" || style === "plate") && p.lipMm > 0) {
+        const pd = panelD(i, x, y), lw = p.lipWidthMm;
+        const band = lw / 2 - Math.abs(pd + lw / 2 + SHARP_GAP);
+        o += p.lipMm * (band > 0 ? lipEdge(band) : 0);
+      }
+      if (p.shadowMm > 0 && style !== "background" && style !== "plate") {
+        const d = shadowD(i, x, y);
+        o -= p.shadowMm * (d > 0 ? shadowEdge(d) : 0);
+      }
+      out[0] = o;
+    } };
+  }
+
+  // Sharp: walls carried on past their ends, clamped clear of the work.
+  const clear = SHARP_CLEAR, past = SHARP_PAST;
+  const fields = [], layers = [];
+  const field = name => { fields.push(name); return fields.length - 1; };
+  const fill = []; // (i, x, y, out) => void, one per field
+  const style = p.style;
+  // Walls are held clear of the work (above it for a cut, below for a
+  // raise) where they do nothing.
+  const clampCut = (level, w) => Math.min(level + clear, w);
+  const clampRaise = (level, w) => Math.max(level - clear, w);
+  const hasTex = on => texture && on;
+  // The V of a 100% wall meets the floor exactly; keep the floor a little
+  // lower so the two never just touch.
+  const floorFactor = p.wallPct >= 95 ? 1.05 : 1;
+
+  if (style === "sunk" || style === "plate" || style === "outline" || style === "halo") {
+    const level = style === "plate" ? p.plateMm : 0;
+    if (style === "plate") {
+      const plateWall = field("plate wall");
+      const plateTop = hasTex(texOnBack) ? field("plate top") : undefined;
+      fill[plateWall] = (i, x, y) => clampRaise(0, p.plateMm * panelEdge(panelD(i, x, y)));
+      if (plateTop !== undefined) fill[plateTop] = (i, x, y) => p.plateMm - p.texDepthMm * tex(x, y);
+      layers.push({ cut: false, low: 0, high: p.plateMm, wall: plateWall, cap: plateTop });
+    }
+    const wall = field("letter wall");
+    const needCap = varies || p.thinPct > 0 || hasTex(texOnLetters);
+    const cap = needCap ? field("letter floor") : undefined;
+    const amount = (i, x, y) => {
+      const v = variation(x, y);
+      const ratio = style === "outline" || style === "halo" ? 1 : letterRatio(i);
+      return depth * v * (p.thinPct > 0 ? Math.pow(Math.min(ratio, 1), p.thinPct / 100) : 1);
+    };
+    fill[wall] = (i, x, y) => {
+      const f = style === "outline" || style === "halo" ? grooveDepth(i) : stroke(letterS(i), letterRatio(i));
+      return clampCut(level, level - depth * variation(x, y) * f);
+    };
+    if (cap !== undefined) {
+      fill[cap] = (i, x, y) => level - amount(i, x, y) * floorFactor - (hasTex(texOnLetters) ? p.texDepthMm * tex(x, y) : 0);
+    }
+    const low = level - depth * floorFactor - (needCap ? p.texDepthMm + 0.05 : 0) - (varies ? depth : 0);
+    layers.push({ cut: true, low, high: level + past, wall, cap });
+  } else if (style === "raised") {
+    const wall = field("letter wall");
+    const needCap = varies || p.thinPct > 0 || hasTex(texOnLetters);
+    const cap = needCap ? field("letter top") : undefined;
+    fill[wall] = (i, x, y) => clampRaise(0, depth * variation(x, y) * stroke(letterS(i), letterRatio(i)));
+    if (cap !== undefined) {
+      fill[cap] = (i, x, y) => depth * variation(x, y) * floorFactor
+        * (p.thinPct > 0 ? Math.pow(Math.min(letterRatio(i), 1), p.thinPct / 100) : 1)
+        - (hasTex(texOnLetters) ? p.texDepthMm * tex(x, y) : 0);
+    }
+    const high = depth * floorFactor * (varies ? 2 : 1) + (needCap ? 0.05 : 0);
+    layers.push({ cut: false, low: 0, high, wall, cap });
+  } else if (style === "background") {
+    const wall = field("background wall");
+    const cap = varies || hasTex(texOnBack) ? field("background floor") : undefined;
+    fill[wall] = (i, x, y) => {
+      const standing = stroke(letterS(i), 1);              // carries on past both ends
+      const back = Math.min(panelEdge(panelD(i, x, y)), 1 - standing);
+      return clampCut(0, -depth * variation(x, y) * back);
+    };
+    if (cap !== undefined) fill[cap] = (i, x, y) => -depth * variation(x, y) - (hasTex(texOnBack) ? p.texDepthMm * tex(x, y) : 0);
+    layers.push({ cut: true, low: -depth * (varies ? 2 : 1) - (cap !== undefined ? p.texDepthMm + 0.05 : 0), high: past, wall, cap });
+  }
+  if ((style === "background" || style === "plate") && p.lipMm > 0) {
+    const wall = field("lip wall");
+    const lw = p.lipWidthMm;
+    fill[wall] = (i, x, y) => {
+      const band = lw / 2 - Math.abs(panelD(i, x, y) + lw / 2 + SHARP_GAP);
+      return clampRaise(0, p.lipMm * lipEdge(band));
+    };
+    layers.push({ cut: false, low: 0, high: p.lipMm, wall });
+  }
+  if (p.shadowMm > 0 && style !== "background" && style !== "plate") {
+    const wall = field("shadow wall");
+    fill[wall] = (i, x, y) => clampCut(0, -p.shadowMm * shadowEdge(shadowD(i, x, y)));
+    layers.push({ cut: true, low: -p.shadowMm, high: past, wall });
+  }
+  return { fields, layers, at(i, x, y, out) {
+    for (let f = 0; f < fill.length; f++) out[f] = fill[f](i, x, y);
+  } };
+}
+
+const smoothstep = (a, b, t) => { const u = Math.min(1, Math.max(0, (t - a) / (b - a))); return u * u * (3 - 2 * u); };
+
+// ===========================================================================
+// Distance transforms, centre lines, blur
+// ===========================================================================
+
+const FAR = 1e20;
+
+// Exact Euclidean distance transform (Felzenszwalb & Huttenlocher): every 0
+// in `grid` is a feature, and each cell ends up holding its squared distance
+// in pixels to the nearest one. If `nearest` is given, it gets the index of
+// that nearest feature too.
+function squaredDistances(grid, W, H, nearest) {
+  const n = Math.max(W, H);
+  const f = new Float64Array(n), d = new Float64Array(n), arg = new Int32Array(n);
+  const v = new Int32Array(n), z = new Float64Array(n + 1);
+  const column = nearest ? new Int32Array(W * H) : null;  // nearest row within the column
+  for (let x = 0; x < W; x++) {
+    for (let y = 0; y < H; y++) f[y] = grid[y * W + x];
+    lowerEnvelope(f, H, d, v, z, arg);
+    for (let y = 0; y < H; y++) {
+      grid[y * W + x] = d[y];
+      if (column) column[y * W + x] = arg[y];
+    }
+  }
+  for (let y = 0; y < H; y++) {
+    const row = y * W;
+    for (let x = 0; x < W; x++) f[x] = grid[row + x];
+    lowerEnvelope(f, W, d, v, z, arg);
+    for (let x = 0; x < W; x++) {
+      grid[row + x] = d[x];
+      if (nearest) nearest[row + x] = column[row + arg[x]] * W + arg[x];
+    }
+  }
+}
+
+// The centre lines of the strokes: for every pixel, the squared distance to
+// them and the nearest centre-line pixel. A centre-line pixel is an inside
+// pixel whose nearest edge lies in a clearly different direction from its
+// neighbour's: more than 100° apart, as across a stroke. That leaves out the
+// pixelated edge, which would otherwise sprout spurs.
+//
+// It still finds the branches that run from a stroke's end into each of its
+// corners. Those are thin, so a corner leaning on one for its stroke width
+// was cut to full depth right up to the tip: a little notch or blob, on one
+// letter or another depending on how the letters fell on the pixel grid.
+// A branch lies close to the wider centre line it comes off, which a true
+// stroke, even a tapering one, does not. So any centre-line pixel within
+// BRANCH_REACH times the radius of one more than BRANCH_RATIO times wider
+// is dropped, and corners take their stroke width from the stroke itself.
+// The reach is a little over √2 because a square corner's tip is √2 radii
+// from the end of its stroke's centre line, and a stray pixel there is
+// otherwise out of reach.
+const BRANCH_RATIO = 1.3, BRANCH_REACH = 1.5;
+
+function centreLines(inward, nearest, W, H) {
+  const centre = new Float64Array(W * H).fill(FAR);
+  let count = 0;
+  const apart = Math.cos(100 * Math.PI / 180);
+  const away = (i, x, y) => [nearest[i] % W - x, ((nearest[i] / W) | 0) - y];
+  for (let y = 0; y < H - 1; y++) {
+    for (let x = 0; x < W - 1; x++) {
+      const i = y * W + x;
+      if (inward[i] < 1.5) continue;
+      const [ax, ay] = away(i, x, y);
+      for (const [j, jx, jy] of [[i + 1, x + 1, y], [i + W, x, y + 1]]) {
+        if (inward[j] < 1.5) continue;
+        const [bx, by] = away(j, jx, jy);
+        const dot = (ax * bx + ay * by) / Math.sqrt((ax * ax + ay * ay) * (bx * bx + by * by));
+        if (dot < apart) {
+          const c = inward[i] >= inward[j] ? i : j;
+          if (centre[c] !== 0) count++;
+          centre[c] = 0;
+        }
+      }
+    }
+  }
+  // The widest centre-line pixel within reach of each pixel.
+  const cover = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) {
+    if (centre[i] !== 0) continue;
+    const r = inward[i], reach = BRANCH_REACH * r, cx = i % W, cy = (i / W) | 0;
+    for (let dy = -Math.floor(reach); dy <= reach; dy++) {
+      const y = cy + dy;
+      if (y < 0 || y >= H) continue;
+      const span = Math.floor(Math.sqrt(reach * reach - dy * dy));
+      for (let x = Math.max(0, cx - span), end = Math.min(W - 1, cx + span); x <= end; x++) {
+        if (cover[y * W + x] < r) cover[y * W + x] = r;
+      }
+    }
+  }
+  for (let i = 0; i < W * H; i++) {
+    if (centre[i] === 0 && cover[i] > BRANCH_RATIO * inward[i]) {
+      centre[i] = FAR;
+      count--;
+    }
+  }
+  const closest = new Int32Array(W * H);
+  if (count > 0) squaredDistances(centre, W, H, closest);
+  return { squared: centre, nearest: closest, count };
+}
+
+function lowerEnvelope(f, n, d, v, z, arg) {
+  let k = 0;
+  v[0] = 0; z[0] = -Infinity; z[1] = Infinity;
+  for (let q = 1; q < n; q++) {
+    let s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+    while (s <= z[k]) {
+      k--;
+      s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+    }
+    k++;
+    v[k] = q; z[k] = s; z[k + 1] = Infinity;
+  }
+  k = 0;
+  for (let q = 0; q < n; q++) {
+    while (z[k + 1] < q) k++;
+    d[q] = (q - v[k]) * (q - v[k]) + f[v[k]];
+    arg[q] = v[k];
+  }
+}
+
+function gaussianBlur(img, W, H, sigma) {
+  if (sigma < 0.3) return;
+  const r = Math.ceil(3 * sigma);
+  const kernel = new Float32Array(2 * r + 1);
+  let sum = 0;
+  for (let i = -r; i <= r; i++) sum += kernel[i + r] = Math.exp(-i * i / (2 * sigma * sigma));
+  for (let i = 0; i < kernel.length; i++) kernel[i] /= sum;
+  const tmp = new Float32Array(W * H);
+  // The border is flat for wider than r, so clamping at the edge is exact.
+  for (let y = 0; y < H; y++) {
+    const row = y * W;
+    for (let x = 0; x < W; x++) {
+      let s = 0;
+      for (let k = -r; k <= r; k++) s += kernel[k + r] * img[row + Math.min(W - 1, Math.max(0, x + k))];
+      tmp[row + x] = s;
+    }
+  }
+  for (let x = 0; x < W; x++) {
+    for (let y = 0; y < H; y++) {
+      let s = 0;
+      for (let k = -r; k <= r; k++) s += kernel[k + r] * tmp[Math.min(H - 1, Math.max(0, y + k)) * W + x];
+      img[y * W + x] = s;
+    }
+  }
+}
+
+function bilinear(img, W, H, x, y) {
+  const x0 = Math.min(W - 2, Math.floor(x)), y0 = Math.min(H - 2, Math.floor(y));
+  const fx = x - x0, fy = y - y0, i = y0 * W + x0;
+  return (img[i] * (1 - fx) + img[i + 1] * fx) * (1 - fy) + (img[i + W] * (1 - fx) + img[i + W + 1] * fx) * fy;
+}
+
+// ===========================================================================
+// Pictures in the palette
+// ===========================================================================
+
+// The height map as shaded relief, lit from the top left.
+function drawHeightMap(map) {
+  const c = $("heightmap");
+  c.width = map.nu;
+  c.height = map.nv;
+  const ctx = c.getContext("2d");
+  const out = ctx.createImageData(map.nu, map.nv);
+  const h = map.relief, nu = map.nu, nv = map.nv, step = map.res;
+  const at = (i, j) => h[Math.min(nv - 1, Math.max(0, j)) * nu + Math.min(nu - 1, Math.max(0, i))];
+  const L = [-0.45, 0.55, 0.7], len = Math.hypot(...L);
+  for (let j = 0; j < nv; j++) {
+    for (let i = 0; i < nu; i++) {
+      const dx = (at(i + 1, j) - at(i - 1, j)) / (2 * step), dy = (at(i, j - 1) - at(i, j + 1)) / (2 * step);
+      const n = [-dx, -dy, 1], nl = Math.hypot(...n);
+      const lit = Math.max(0, (n[0] * L[0] + n[1] * L[1] + n[2] * L[2]) / (nl * len));
+      const v = Math.round(40 + 200 * lit);
+      out.data.set([v, v, v + 6, 255], 4 * (j * nu + i));
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+  if ($("resAuto").checked) $("resMm").value = map.res.toFixed(3);
+  $("resMm").disabled = $("resAuto").checked;
+  let info = `${map.widthMm.toFixed(1)} × ${map.heightMm.toFixed(1)} mm, ` +
+    `${map.nu} × ${map.nv} = ${(map.nu * map.nv).toLocaleString()} control points at ${map.res.toFixed(3)} mm`;
+  if (map.resLimited) info += "\nResolution held back by the point budget: shorten the text for finer detail";
+  info += `\nDeepest ${map.deepest.toFixed(2)} mm` + (map.highest > 0.001 ? `, highest ${map.highest.toFixed(2)} mm` : "");
+  if (cylinder) {
+    const lengthways = $("direction").value === "lengthways";
+    const arcMm = lengthways ? map.heightMm : map.widthMm;
+    const axialMm = lengthways ? map.widthMm : map.heightMm;
+    const degrees = arcMm / cylinder.radiusMm * 180 / Math.PI;
+    info += `\nWraps ${degrees.toFixed(0)}° of the ${(2 * cylinder.radiusMm).toFixed(2)} mm cylinder, ` +
+      `${axialMm.toFixed(1)} of its ${cylinder.lengthMm.toFixed(1)} mm length`;
+    const offset = Math.abs(parseFloat($("offsetMm").value) || 0);
+    if (axialMm / 2 + offset > cylinder.lengthMm / 2) info += " (runs past an end)";
+  }
+  $("info").textContent = info;
+}
+
+// Cross-section through a typical stroke and what's around it, as it will be
+// made: the surface, the letter outline dashed, and a dot for each control
+// point across it. The depth is stretched when it would otherwise be too
+// shallow to see.
+function drawProfile(p, map) {
+  const c = $("profile");
+  const W = c.width = Math.max(1, c.clientWidth * devicePixelRatio);
+  const H = c.height = Math.max(1, c.clientHeight * devicePixelRatio);
+  const ctx = c.getContext("2d");
+  const sharp = p.mode === "sharp";
+  const half = map.typicalHalfMm, stroke = 2 * half;
+  const pad = Math.max(1.2 * half, roomNeeded(p) * 0.7 + 0.2);
+  const spanMm = stroke + 2 * pad;
+  const n = 500, step = spanMm / (n - 1);
+  // A one-stroke world for the composer: inward distance and half-width along x.
+  const inward = new Float32Array(n), halfW = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = -pad + i * step;
+    inward[i] = Math.min(x, stroke - x);
+    halfW[i] = half;
+  }
+  const fake = { W: n, H: 1, ppm: 1, inward, half: halfW, thickest: map.thickestHalfMm,
+                 baselines: [0], lineStep: 1, ink: { x0: pad, x1: pad + stroke, y0: -1e6, y1: 1e6 } };
+  const q = Object.assign({}, p, { shadowMm: 0, texDepthMm: 0, panelShape: "hug", panelPadMm: Math.max(p.panelPadMm, 0.4 * pad),
+                                   fadeStart: 100, fadeEnd: 100, lineDepths: "" });
+  const parts = composer(q, fake, sharp);
+  const sample = new Float64Array(parts.fields.length);
+  let ys;
+  if (sharp) {
+    const grids = parts.fields.map(() => new Float32Array(n));
+    for (let i = 0; i < n; i++) { parts.at(i, i, 0, sample); grids.forEach((g, f) => { g[i] = sample[f]; }); }
+    ys = sharpRelief(parts.layers.map(l => ({ cut: l.cut, low: l.low, high: l.high, wall: grids[l.wall],
+                                               cap: l.cap === undefined ? null : grids[l.cap] })), n);
+  } else {
+    ys = new Float32Array(n);
+    for (let i = 0; i < n; i++) { parts.at(i, i, 0, sample); ys[i] = sample[0]; }
+    const sigma = Math.max(p.smoothMm, map.res / 2) / step;
+    if (sigma >= 0.3) {
+      const r = Math.ceil(3 * sigma), src = Float32Array.from(ys);
+      for (let i = 0; i < n; i++) {
+        let s = 0, w = 0;
+        for (let k = -r; k <= r; k++) { const g = Math.exp(-k * k / (2 * sigma * sigma)); s += g * src[Math.min(n - 1, Math.max(0, i + k))]; w += g; }
+        ys[i] = s / w;
+      }
+    }
+  }
+  const lo = Math.min(0, ...ys), hi = Math.max(0, ...ys), range = Math.max(hi - lo, 1e-6);
+  const sx = W / spanMm;
+  const top = 10 * devicePixelRatio, room = H - top - 8 * devicePixelRatio;
+  const truePx = range * sx;
+  const stretch = truePx < room ? Math.max(1, Math.floor(room / truePx)) : 1;
+  const sy = Math.min(truePx * stretch, room) / range;
+  const yPx = y => top + (hi - y) * sy;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.lineWidth = devicePixelRatio;
+  ctx.setLineDash([3 * devicePixelRatio, 3 * devicePixelRatio]);
+  ctx.strokeStyle = "#c3c7cd";
+  for (const x of [0, stroke]) { ctx.beginPath(); ctx.moveTo((x + pad) * sx, 0); ctx.lineTo((x + pad) * sx, H); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(0, yPx(0)); ctx.lineTo(W, yPx(0)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ys.forEach((y, i) => ctx.lineTo(i * step * sx, yPx(y)));
+  ctx.lineTo(W, H); ctx.lineTo(0, H);
+  ctx.fillStyle = "#e4eef6";
+  ctx.fill();
+  ctx.beginPath();
+  ys.forEach((y, i) => ctx.lineTo(i * step * sx, yPx(y)));
+  ctx.strokeStyle = "#0696d7";
+  ctx.lineWidth = 2 * devicePixelRatio;
+  ctx.stroke();
+  if (!sharp) {
+    ctx.fillStyle = "#c0392b";
+    for (let x = stroke / 2 - Math.floor((stroke / 2 + pad) / map.res) * map.res; x <= stroke + pad; x += map.res) {
+      const f = (x + pad) / step, i = Math.min(n - 2, Math.max(0, Math.floor(f)));
+      const y = ys[i] + (ys[i + 1] - ys[i]) * (f - i);
+      ctx.beginPath(); ctx.arc((x + pad) * sx, yPx(y), 1.6 * devicePixelRatio, 0, 2 * Math.PI); ctx.fill();
+    }
+  }
+  let note = `Typical stroke ${stroke.toFixed(2)} mm wide (thickest ${(2 * map.thickestHalfMm).toFixed(2)} mm)` +
+    (stretch > 1 ? `, height shown ×${stretch}` : "");
+  if (!sharp) note += `; ${Math.round(half / map.res)} control points across half of it`;
+  if (sharp && (p.rimFilletMm > 0 || p.floorFilletMm > 0)) note += "\nFillets are added by Fusion after the cut and aren't drawn here.";
+  $("profileNote").textContent = note;
+}
+
+// ===========================================================================
+// Talking to Fusion. One request at a time: while one is running, later
+// changes collapse into a single preview that runs after it, so Fusion only
+// ever works on the newest settings. A generate is never dropped.
+// ===========================================================================
+
+let fusionMaps = {};   // block id -> map id Fusion has
+
+function mapKeyOf(p) {
+  return JSON.stringify([p.mode, ...BLOCK_FIELDS.filter(k => !PLACE_FIELDS.includes(k))
+    .map(k => k === "resMm" && p.resAuto ? "auto" : p[k])]);
+}
+
+async function mapFor(block) {
+  const p = blockParams(block);
+  const key = mapKeyOf(p);
+  if (key !== block.mapKey) {
+    block.map = await heightMap(p);
+    block.mapKey = key;
+    block.mapId++;
+  }
+  return block.map;
+}
+
+function encode(values) {
+  const bytes = new Uint8Array(Float32Array.from(values).buffer);
+  let text = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) text += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(text);
+}
+
+function mapMessage(map) {
+  const base = { nu: map.nu, nv: map.nv, widthMm: map.widthMm, heightMm: map.heightMm };
+  if (map.layers) {
+    base.layers = map.layers.map(l => ({ cut: l.cut, low: l.low, high: l.high, wall: encode(l.wall),
+                                         cap: l.cap ? encode(l.cap) : null }));
+  } else {
+    base.relief = encode(map.relief);
+  }
+  return base;
+}
+
+async function request(kind) {
+  const message = { mode, rimFilletMm: $("rimFilletMm").valueAsNumber || 0, floorFilletMm: $("floorFilletMm").valueAsNumber || 0,
+                    singleFace: $("singleFace").checked, replace: $("replace").checked,
+                    wholeBody: $("wholeBody").checked, blocks: [] };
+  for (const block of blocks) {
+    const map = await mapFor(block);
+    const p = block.params;
+    const entry = { key: String(block.id), mapId: block.mapId, text: p.text,
+                    angleDeg: p.angleDeg, offsetMm: p.offsetMm, flip: p.flip, direction: p.direction };
+    if (fusionMaps[block.id] !== block.mapId) entry.map = mapMessage(map);
+    message.blocks.push(entry);
+  }
+  let reply = JSON.parse(await adsk.fusionSendData(kind, JSON.stringify(message)));
+  if (!reply.ok && reply.needMap) {
+    for (const entry of message.blocks) entry.map = mapMessage(blocks.find(b => String(b.id) === entry.key).map);
+    reply = JSON.parse(await adsk.fusionSendData(kind, JSON.stringify(message)));
+  }
+  for (const entry of message.blocks) if (entry.map) fusionMaps[entry.key] = entry.mapId;
+  return reply;
+}
+
+const inFusion = () => !!(window.adsk && adsk.fusionSendData);
+// Lets the palette repaint before Fusion is kept busy.
+const repaint = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+
+let busy = false, queued = null;
+function enqueue(kind) {
+  if (queued !== "generate") queued = kind;
+  if (!busy) pump();
+}
+
+async function pump() {
+  busy = true;
+  while (queued) {
+    const kind = queued;
+    queued = null;
+    try {
+      await (kind === "generate" ? generate() : preview());
+    } catch (e) {
+      say(e.message, true);
+    }
+  }
+  busy = false;
+}
+
+async function refreshPictures() {
+  saveForm();
+  const block = blocks[current];
+  const map = await mapFor(block);
+  drawHeightMap(map);
+  drawProfile(blockParams(block), map);
+}
+
+async function preview() {
+  await refreshPictures();
+  say("");
+  if (cylinder && $("live").checked && inFusion()) {
+    if (mode === "sharp") say("Working out the cut…");
+    const reply = await request("preview");
+    say(reply.ok ? (reply.note || "") : reply.message, !reply.ok);
+  }
+}
+
+async function generate() {
+  if (!inFusion()) throw new Error("Not running inside Fusion.");
+  if (!cylinder) throw new Error("Pick a cylinder first.");
+  const button = $("generate");
+  button.disabled = true;
+  try {
+    say("Building the height map…");
+    await refreshPictures();
+    say(mode === "sharp" ? "Cutting into the body…" : "Building the surface…");
+    await repaint();
+    const reply = await request("generate");
+    if (!reply.ok) return say(reply.message, true);
+    let text = `Done in ${reply.seconds} s: ${reply.summary}.`;
+    if (mode === "smooth") text += " The new surface sits in the body, so hide the body to see it.";
+    if (reply.warning) text += "\n" + reply.warning;
+    say(text);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+// ===========================================================================
+// Wiring
+// ===========================================================================
+
+$("pick").onclick = async () => {
+  if (!inFusion()) return say("Not running inside Fusion.", true);
+  say("Select a cylindrical face or body in the canvas…");
+  const reply = JSON.parse(await adsk.fusionSendData("pick", "{}"));
+  if (!reply.ok) return say(reply.message, true);
+  cylinder = reply;
+  fusionMaps = {};
+  $("target").textContent = `${reply.body}: ${reply.bore ? "bore" : "cylinder"} ` +
+    `Ø${(2 * reply.radiusMm).toFixed(2)} mm, ${reply.lengthMm.toFixed(1)} mm long`;
+  $("target").classList.add("set");
+  say("");
+  enqueue("preview");
+};
+
+$("generate").onclick = () => enqueue("generate");
+$("wholeBody").addEventListener("change", () => { if ($("live").checked) enqueue("preview"); });
+
+$("live").addEventListener("change", () => {
+  if ($("live").checked) enqueue("preview");
+  else if (inFusion()) adsk.fusionSendData("hidePreview", "{}");
+});
+
+for (const tab of document.querySelectorAll("nav.tabs button")) {
+  tab.onclick = () => {
+    for (const t of document.querySelectorAll("nav.tabs button")) t.classList.toggle("on", t === tab);
+    for (const s of document.querySelectorAll("section[data-tab]")) s.classList.toggle("hidden", s.dataset.tab !== tab.dataset.tab);
+    if (tab.dataset.tab === "shape" && blocks[current].map) drawProfile(blockParams(blocks[current]), blocks[current].map);
+  };
+}
+
+for (const b of $("modeSeg").children) {
+  b.onclick = () => { mode = b.dataset.value; showRelevant(); schedule(); };
+}
+
+function applyPreset() {
+  const preset = PRESETS[$("preset").value];
+  if (!preset) return;
+  for (const k of PROFILE_FIELDS) $(k).value = preset[k];
+  showSliderValues();
+}
+$("preset").innerHTML = Object.entries(PRESETS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("") +
+  `<option value="custom">Custom</option>`;
+$("preset").addEventListener("change", () => { applyPreset(); schedule(); });
+for (const k of PROFILE_FIELDS) $(k).addEventListener("input", () => { $("preset").value = "custom"; });
+
+let timer = null;
+function schedule() {
+  showSliderValues();
+  showRelevant();
+  clearTimeout(timer);
+  timer = setTimeout(() => { saveForm(); drawBlocks(); enqueue("preview"); }, 150);
+}
+for (const id of [...BLOCK_FIELDS, "rimFilletMm", "floorFilletMm"]) {
+  // The font box redraws when a family is committed (see the font list below).
+  if (id !== "family") $(id).addEventListener("input", schedule);
+}
+
+// ---------------------------------------------------------------------------
+// The font list: every Google family, each shown in itself. A family's
+// stylesheet is added once its row scrolls into view, through the same
+// loader the text is drawn with, so a font picked here is already on its
+// way. Only the first LIST_LIMIT matches are listed at once.
+// ---------------------------------------------------------------------------
+
+const familyBox = $("family"), fontList = $("fonts");
+const LIST_LIMIT = 300;
+let highlighted = -1;
+
+const cssFamily = name => `'${name.replace(/['\\]/g, "")}', sans-serif`;
+
+const fontRows = new IntersectionObserver(entries => {
+  for (const entry of entries) {
+    if (!entry.isIntersecting) continue;
+    const family = entry.target.dataset.family;
+    googleStylesheet(family, 400);
+    entry.target.firstChild.style.fontFamily = cssFamily(family);
+    fontRows.unobserve(entry.target);
+  }
+}, { root: fontList, rootMargin: "150px" });
+
+function showFonts(filter) {
+  const typed = filter ? familyBox.value.trim().toLowerCase() : "";
+  const kind = $("fontKind").value;
+  const matches = GOOGLE_FONTS.filter(([name, k]) => (!kind || k === kind) && name.toLowerCase().includes(typed));
+  // Names that start with what was typed come first.
+  if (typed) matches.sort((a, b) => (b[0].toLowerCase().startsWith(typed) - a[0].toLowerCase().startsWith(typed)));
+  fontRows.disconnect();
+  fontList.innerHTML = "";
+  for (const [family, k] of matches.slice(0, LIST_LIMIT)) {
+    const item = document.createElement("li");
+    item.dataset.family = family;
+    const name = document.createElement("span");
+    name.textContent = family;
+    const tag = document.createElement("span");
+    tag.className = "kind";
+    tag.textContent = k.replace("-", " ");
+    item.append(name, tag);
+    fontList.append(item);
+    fontRows.observe(item);
+  }
+  if (matches.length > LIST_LIMIT) {
+    const more = document.createElement("li");
+    more.className = "more";
+    more.textContent = `${matches.length - LIST_LIMIT} more: type to narrow the list`;
+    fontList.append(more);
+  }
+  highlighted = -1;
+  fontList.hidden = matches.length === 0;
+}
+
+function highlight(index) {
+  const items = [...fontList.children].filter(li => li.dataset.family);
+  if (!items.length) return;
+  highlighted = (index + items.length) % items.length;
+  for (const [k, item] of items.entries()) item.classList.toggle("on", k === highlighted);
+  items[highlighted].scrollIntoView({ block: "nearest" });
+}
+
+// The box shows its own font too, once that font is there.
+function styleFamilyBox() { familyBox.style.fontFamily = cssFamily(familyBox.value.trim()); }
+
+// Typing only filters the list. The text is redrawn once a family is picked,
+// or typed and then confirmed with Enter or by leaving the box, so a
+// half-typed name doesn't flash "not found".
+let committed = familyBox.value;
+function commitFont() {
+  fontList.hidden = true;
+  styleFamilyBox();
+  if (familyBox.value !== committed) {
+    committed = familyBox.value;
+    schedule();
+  }
+}
+
+function chooseFont(family) {
+  familyBox.value = family;
+  commitFont();
+}
+
+familyBox.addEventListener("focus", () => showFonts(false));
+familyBox.addEventListener("click", () => { if (fontList.hidden) showFonts(false); });
+familyBox.addEventListener("input", () => showFonts(true));
+familyBox.addEventListener("blur", commitFont);
+familyBox.addEventListener("keydown", e => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if (fontList.hidden) showFonts(false);
+    highlight(highlighted + (e.key === "ArrowDown" ? 1 : -1));
+    e.preventDefault();
+  } else if (e.key === "Enter") {
+    if (!fontList.hidden && highlighted >= 0) chooseFont(fontList.children[highlighted].dataset.family);
+    else commitFont();
+    e.preventDefault();
+  } else if (e.key === "Escape") {
+    fontList.hidden = true;
+  }
+});
+// mousedown rather than click, so it lands before the box loses focus.
+fontList.addEventListener("mousedown", e => {
+  const item = e.target.closest("li");
+  if (item && item.dataset.family) chooseFont(item.dataset.family);
+  e.preventDefault();
+});
+$("fontKind").addEventListener("change", () => { familyBox.focus(); showFonts(false); });
+$("fontKind").addEventListener("mousedown", e => e.stopPropagation());
+
+window.addEventListener("resize", () => { const b = blocks[current]; if (b && b.map) drawProfile(blockParams(b), b.map); });
+
+applyPreset();
+addBlock(readForm());
+writeForm(blocks[0].params);
+drawBlocks();
+schedule();
+</script>
+</body>
+</html>
