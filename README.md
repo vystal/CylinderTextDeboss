@@ -1,7 +1,7 @@
 # Cylinder Text Deboss
 
 A Fusion add-in that puts text on a cylinder: sunk in, raised, outlined, in a
-recessed panel or on a raised plate, with any Google font. It works in two
+recessed panel or on a raised plate, with any Google font. It works in three
 ways:
 
 - **Smooth surface**: one NURBS surface body that sits flush with the
@@ -10,6 +10,11 @@ ways:
   exact sharp edges between separate faces, and real Fusion fillets if you
   want the edges rounded. On a surface body, which has no material to cut,
   the text goes into a new surface body made from it (see below).
+- **Exact**: the letters' own outlines, read from the font file, embossed
+  into the body by Fusion's Emboss feature. The edges follow the font
+  exactly, it is far quicker than Sharp, and the result is an ordinary group
+  of features in the timeline. Walls go straight in, so the profile,
+  texture and depth-variation settings don't apply.
 
 ## Install
 
@@ -62,7 +67,9 @@ respects that and shows just the text area too.
 
 ### Shape
 
-- **Edges**: *Smooth surface* or *Sharp, into the body*.
+- **Edges**: *Smooth surface*, *Sharp, into the body* or *Exact*. Exact
+  does the sunk, raised, background and plate styles, with rectangle,
+  rounded, capsule and oval panels, and the two fillets; it hides the rest.
 - **Style**:
   - *Letters sunk in*
   - *Letters raised*
@@ -78,9 +85,11 @@ respects that and shows just the text area too.
   edge to its middle, so it looks the same on thin and thick strokes.
   - **Wall width**: how far in the wall reaches the floor (100% = a V).
   - Smooth only: **rim and floor roundness and shape**.
-  - Sharp only: **top edge fillet** and **floor fillet**, real fillets
-    added by Fusion after the cut. If Fusion can't fit them at that size
-    they are tried again smaller, and the status line says so.
+  - Sharp and Exact: **top edge fillet** and **floor fillet**, real fillets
+    added by Fusion after the cut. If Fusion can't round every edge at that
+    size, a few edges that can't take it even alone are left sharp and the
+    rest rounded; if many can't, they are all tried smaller. The status line
+    says which.
   - **Dish ↔ ridge**, **ridge width**, **ridge sharpness**: a ridge along
     the middle of each stroke (V becomes W) or a dish (U).
   - **Thin strokes shallower**: 100 makes depth follow stroke width, as a
@@ -153,11 +162,26 @@ much of the cylinder it covers.
   what you'll get. For Sharp, that's the exact result of the cut, worked out
   in memory. With **Whole body in preview** off, or the body hidden by you,
   only the text area is drawn: the result trimmed to the region over the
-  text. Sharp previews draw the edges as black lines, as Fusion does. For Smooth, it's a copy of the body with a shallow pocket under
-  the text, and the surface over it. Both are drawn as meshes made here:
-  drawing the body directly took Fusion up to 27 s for intricate cuts. The
-  body is shown again when the preview stops (unticked, Generate, palette
-  closed, add-in stopped).
+  text. Sharp previews draw the edges as black lines, as Fusion does. For
+  Smooth, it's a copy of the body with a shallow pocket under the text, and
+  the surface over it. Both are drawn as meshes made here: drawing the body
+  directly took Fusion up to 27 s for intricate cuts. The body is shown again
+  when the preview stops (unticked, Generate, palette closed, add-in
+  stopped). For Exact, the outlines are drawn on the cylinder: black at the
+  surface, grey where the floor or top will be; the body stays as it is.
+- **Exact** (`palette/outlines.js`, `exact.py`): Fusion fetches the font's
+  TTF file from Google Fonts and keeps it on disk. In the palette,
+  [opentype.js](https://opentype.js.org) reads the glyphs and lays the text
+  out as the height maps do (a capital H the text height, kerning, letter
+  and line spacing), and [paper.js](http://paperjs.org) merges overlapping
+  pieces: many fonts build letters from overlapping strokes or contours that
+  cross themselves, and Fusion makes no usable regions from those. Each
+  outline goes into a sketch on a plane touching the cylinder as one spline
+  of cubic pieces. Each region that is ink (or background, or plate) is
+  found by its winding number and embossed on its own: Fusion's API refuses
+  an Emboss of several profiles on a curved face, saying they "are not
+  coplanar". Emboss wraps by arc length, as the other modes do. A plate is
+  embossed first, then the letters into its top from a second plane.
 
 ## Speed
 
@@ -170,6 +194,13 @@ Measured for "Ag" at 5 mm on a 12 mm barrel:
 | Sharp, double outline | 5.3 s | 1.6 s | 5.5 s |
 | Sharp, knurled floor | 10.7 s | 0.2 s | 1.1 s |
 | Smooth, any style | 0.4–0.7 s | 0.4–0.7 s | 1.3–1.7 s |
+| Exact, any style | 0.1–0.4 s | 0.1–0.4 s | 0.3–1.4 s |
+| Exact, with fillets | 0.1–0.4 s | 0.1–0.4 s | 1.2–2.3 s |
+
+Sharp mode slows with the size of the text: "TEXT" 27 mm long, 0.5 mm deep
+took 34 s to preview and 32 s to Generate, almost all of it Fusion building
+and then checking the one large wall surface. Exact mode did the same text
+in under half a second.
 
 - The height maps are cached: changing only angle, offset, direction or
   flip reuses them, and Fusion isn't sent them again.
@@ -192,6 +223,9 @@ Measured for "Ag" at 5 mm on a 12 mm barrel:
   the asked-for floor fillet. On a surface body, a fillet can leave a
   pinhole a few hundredths of a mm across where strokes meet (the bowl of
   a "g").
+- **Exact mode needs a Google font**, since it reads the font file, and a
+  solid body. Fonts are kept in your temporary folder, in
+  "CylinderTextDeboss fonts".
 - **Sharp corners can upset Fusion's Booleans.** Where a wall meets the
   surface at a very sharp corner, such as the apex of an "A", Fusion has
   once or twice made a smear or fin. Whether it does depends on exactly
@@ -233,6 +267,13 @@ and run in it:
   - Generate gives one stitched shell, open only at the cylinder's ends;
   - Replace shows the original again;
   - a body you've hidden stays hidden, and the preview shows just the text.
+- **Exact mode end to end** (sunk lengthways and around, with fillets,
+  raised, raised with fillets, background, plate, a script font, two lines,
+  two blocks; and in a moved sub-component and a linked one, simulated),
+  with real messages from the palette: preview, Generate, Replace, renders
+  checked by eye. Text lands on the cylinder within 0.0001 mm of its size.
+  The outlines were checked clean (no crossings, every counter kept) for
+  Roboto, Pacifico, Black Ops One and a line of letters with holes.
 - **Fonts:** Google Fonts load in Fusion's palette browser, and the whole
   catalogue lists, filters and searches.
 - **Control sensitivity:** every profile control changes the surface
@@ -244,3 +285,9 @@ control points with V varying fastest (`index = i * countV + j`).
 The interactive pick from the palette has **not** been clicked through yet.
 It uses `ui.selectEntity` from the palette's event handler; the API docs only
 rule that out inside command events.
+
+## Third-party code
+
+`palette/vendor/` holds [opentype.js](https://github.com/opentypejs/opentype.js)
+1.3.4 and [paper.js](https://github.com/paperjs/paper.js) 0.12.18 (core), both
+MIT-licensed; their licences are alongside.

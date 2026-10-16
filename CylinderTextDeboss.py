@@ -18,7 +18,7 @@ import traceback
 import adsk.core
 import adsk.fusion
 
-from . import wrap
+from . import exact, wrap
 
 CMD_ID = "CylinderTextDeboss_Show"
 PALETTE_ID = "CylinderTextDeboss_Palette"
@@ -84,8 +84,9 @@ def stop(context):
     try:
         _clear_preview()
         workspace = ui.workspaces.itemById(WORKSPACE_ID)
-        for panel_id in PANEL_IDS:
-            control = workspace.toolbarPanels.itemById(panel_id).controls.itemById(CMD_ID)
+        for panel_id in PANEL_IDS if workspace else []:
+            panel = workspace.toolbarPanels.itemById(panel_id)
+            control = panel.controls.itemById(CMD_ID) if panel else None
             if control:
                 control.deleteMe()
         for thing in (ui.commandDefinitions.itemById(CMD_ID),
@@ -128,7 +129,8 @@ def _clear_preview():
             body.isLightBulbOn = showing
     _hidden = []
     _context = None
-    app.activeViewport.refresh()
+    if app.activeViewport is not None:     # none while Fusion is closing
+        app.activeViewport.refresh()
 
 
 def _look(body):
@@ -370,6 +372,15 @@ def _show_preview(data):
     hidden = _hidden_by_you(body)
     whole = data.get("wholeBody", True) and not hidden
 
+    if data["mode"] == "exact":
+        # The outlines, drawn on the cylinder: the body itself stays as it is.
+        _clear_preview()
+        _preview = design.rootComponent.customGraphicsGroups.add()
+        for b, m in found:
+            exact.preview(_preview, frame, wrap.placement(frame, *_where(b, m)), m, exact.levels(m))
+        app.activeViewport.refresh()
+        return {"ok": True, "note": "Black: the outline on the surface. Grey: where the floor or top will be."}
+
     if _replacing(data):
         # Show what will replace the last result, not both.
         for thing in _last:
@@ -433,30 +444,89 @@ def _hide_preview(_data):
 
 
 def _fillets(design, made, frame, places, data, context=None):
-    """Round the new edges if asked, smaller each time Fusion can't fit them.
-    context is the occurrence the body is in, if it isn't the root component:
-    a feature gives back the body in its own component's coordinates, and the
-    edges are found in the design's. Returns a warning, or ""."""
+    """Round the new edges if asked. If Fusion can't round them all, the
+    edges it can't round even on their own are left sharp and the rest
+    rounded; if the rest still won't go, they're tried smaller. context is
+    the occurrence the body is in, if it isn't the root component: a feature
+    gives back the body in its own component's coordinates, and the edges
+    are found in the design's. Returns a warning, or ""."""
     rim, floor = data["rimFilletMm"] / 10, data["floorFilletMm"] / 10
     if rim <= 0 and floor <= 0:
         return ""
-    for scale in FILLET_RETRIES:
-        # The body as the last feature left it.
-        target = made[0].bodies.item(0) if hasattr(made[0], "bodies") else made[0]
-        if context is not None and target.assemblyContext is None:
-            target = target.createForAssemblyContext(context)
+    # The body as the last feature left it.
+    target = made[0].bodies.item(0) if hasattr(made[0], "bodies") else made[0]
+    if context is not None and target.assemblyContext is None:
+        target = target.createForAssemblyContext(context)
+    convex, concave = wrap.fillet_edges(target, frame, places)
+    # (token, convex) for each edge to round; tokens outlast the failed and
+    # deleted tries below, which edge objects may not.
+    edges = ([(e.entityToken, True) for e in convex] if rim > 0 else []) +             ([(e.entityToken, False) for e in concave] if floor > 0 else [])
+    if not edges:
+        return "No edges were found to fillet, so the edges were left sharp."
+
+    def attempt(chosen, scale, keep):
+        found = []
+        for token, is_convex in chosen:
+            entities = design.findEntityByToken(token)
+            if entities:
+                e = entities[0]
+                if context is not None and e.assemblyContext is None:
+                    e = e.createForAssemblyContext(context)
+                found.append((e, is_convex))
         try:
-            rounded = wrap.fillet(design, target, frame, places, rim * scale, floor * scale)
+            feature = wrap.add_fillet(design, [e for e, c in found if c], [e for e, c in found if not c],
+                                      rim * scale, floor * scale)
         except Exception:
-            continue
-        if rounded is None:
-            return "No edges were found to fillet, so the edges were left sharp."
-        made.insert(0, rounded)
-        if scale < 1:
-            return ("Fusion couldn't fit the fillets at that size, so they were made %.0f%% "
-                    "as big: %.3f mm on top, %.3f mm at the floor."
-                    % (scale * 100, rim * scale * 10, floor * scale * 10))
+            return False
+        if feature is not None:
+            if keep:
+                made.insert(0, feature)
+            else:
+                feature.deleteMe()
+        return True
+
+    if attempt(edges, 1, True):
         return ""
+
+    # A few edges that can't be rounded (a tight curve, a sharp tip) shouldn't
+    # cost the rest their fillets, so those are looked for, by halves; but
+    # when many fail, smaller fillets everywhere look better, and looking
+    # stops once more than a quarter have.
+    limit = max(1, len(edges) // 4)
+
+    def failing(group, found):
+        """The edges in group that can't be rounded even alone, or None if
+        more than limit of all of them can't."""
+        if attempt(group, 1, False):
+            return []
+        if len(group) == 1:
+            return group if found + 1 <= limit else None
+        half = len(group) // 2
+        left = failing(group[:half], found)
+        if left is None:
+            return None
+        right = failing(group[half:], found + len(left))
+        return None if right is None else left + right
+
+    def sized(scale):
+        return ("Fusion couldn't fit the fillets at that size, so they were made %.0f%% as big: "
+                "%.3f mm on top, %.3f mm at the floor" % (scale * 100, rim * scale * 10, floor * scale * 10))
+
+    def skipped(bad):
+        return ("%d of the %d edges couldn't take a fillet that size, even on their own, and were left sharp"
+                % (len(bad), len(edges)))
+
+    bad = failing(edges, 0)
+    if bad is not None and attempt([e for e in edges if e not in bad], 1, True):
+        return skipped(bad) + "."
+    for scale in FILLET_RETRIES[1:]:
+        if attempt(edges, scale, True):
+            return sized(scale) + "."
+    if bad:
+        rest = [e for e in edges if e not in bad]
+        for scale in FILLET_RETRIES[1:]:
+            if attempt(rest, scale, True):
+                return skipped(bad) + "; " + sized(scale) + "."
     return "Fusion couldn't fit the fillets even much smaller, so the edges were left sharp."
 
 
@@ -468,6 +538,9 @@ def _generate(data):
     name = "Text " + " / ".join(b["text"].split("\n")[0][:30] for b, _ in found)
     warning = ""
     parametric = design.designType == adsk.fusion.DesignTypes.ParametricDesignType
+
+    if data["mode"] == "exact":
+        return _exact_generate(data, found, design, face, frame, started)
 
     if data["mode"] == "sharp":
         tools, places = _tools(frame, face, found)
@@ -529,13 +602,76 @@ def _generate(data):
             "seconds": round(time.time() - started, 2)}
 
 
+def _exact_generate(data, found, design, face, frame, started):
+    """Exact mode: each block's outlines embossed by Fusion. In a parametric
+    design everything made is gathered into one group in the timeline."""
+    global _last, _before
+    _clear_preview()
+    if data.get("replace"):
+        _take_back()
+        design, face, frame = _setting(data)
+    _before = None
+    body = face.body
+    if not body.isSolid:
+        raise RuntimeError("Exact mode works on solid bodies; for a surface use Sharp mode.")
+    parametric = design.designType == adsk.fusion.DesignTypes.ParametricDesignType
+    timeline_start = design.timeline.count if parametric else None
+    made, notes = [], []
+    linked = _linked(body)
+    if linked:
+        # A linked component can't be changed here: emboss a copy of the
+        # body, in this design, and hide the original.
+        copied, body_copy = wrap.add_body(design, adsk.fusion.TemporaryBRepManager.get().copy(body),
+                                          body.name + " with text")
+        made += copied
+        _restore.append((body, body.isLightBulbOn))
+        body.isLightBulbOn = False
+        notes.append("%s is in the linked component %s, which can't be changed from here, so the text "
+                     "went into a copy of it (the original is hidden)" % (body.name, linked))
+        body = body_copy
+    places = []
+    try:
+        for b, m in found:
+            place = wrap.placement(frame, *_where(b, m))
+            places.append(place)
+            made += exact.generate(design, body, frame, place, m, b["text"])
+    except Exception:
+        for thing in reversed(made):
+            if thing.isValid:
+                thing.deleteMe()
+        while _restore:
+            hidden_body, showing = _restore.pop()
+            if hidden_body.isValid:
+                hidden_body.isLightBulbOn = showing
+        raise
+    embosses = [f for f in made if isinstance(f, adsk.fusion.EmbossFeature)]
+    latest = list(reversed(made))
+    warning = _fillets(design, latest, frame, places, data, None if linked else body.assemblyContext)
+    if parametric and design.timeline.count > timeline_start:
+        group = design.timeline.timelineGroups.add(timeline_start, design.timeline.count - 1)
+        group.name = "Text " + " / ".join(b["text"].split("\n")[0][:30] for b, _ in found)
+        _last = [group]
+    else:
+        _last = None
+        warning = (warning + " " if warning else "") + \
+            "In a direct-modelling design Replace can't take the text back out."
+    summary = "%d emboss%s" % (len(embosses), "" if len(embosses) == 1 else "es")
+    if notes:
+        summary += "; " + "; ".join(notes)
+    return {"ok": True, "summary": summary, "warning": warning,
+            "seconds": round(time.time() - started, 2)}
+
+
 def _take_back():
     """Delete what the last Generate made (Replace previous), and show again
     a surface body it had hidden."""
     global _last
     for thing in _last or []:
         if thing is not None and thing.isValid:
-            thing.deleteMe()
+            if isinstance(thing, adsk.fusion.TimelineGroup):
+                thing.deleteMe(True)
+            else:
+                thing.deleteMe()
     _last = None
     while _restore:
         body, showing = _restore.pop()
@@ -544,7 +680,7 @@ def _take_back():
 
 
 _ACTIONS = {"pick": _pick, "preview": _show_preview, "hidePreview": _hide_preview,
-            "generate": _generate}
+            "generate": _generate, "font": exact.font_reply}
 
 
 class _CommandCreated(adsk.core.CommandCreatedEventHandler):

@@ -32,6 +32,7 @@
   .row { display: flex; gap: 6px; align-items: center; }
   .note { color: var(--muted); white-space: pre-wrap; font-size: 11px; }
   .hidden { display: none !important; }
+  body.exact .exact-hide { display: none !important; }
 
   /* Target and text blocks */
   #targetCard { display: flex; gap: 8px; align-items: center; }
@@ -128,6 +129,7 @@
     <div class="seg" id="modeSeg">
       <button data-value="smooth" class="on" title="One smooth surface, flush with the cylinder at its edges. Every edge is a curve.">Smooth surface</button>
       <button data-value="sharp" title="Cut (or added) straight into the body, with exact sharp edges between separate faces, and real fillets if you want them.">Sharp, into the body</button>
+      <button data-value="exact" title="The letters' own outlines, embossed by Fusion: exact edges, fast, editable in the timeline. Straight walls only.">Exact</button>
     </div>
     <div class="note" id="modeNote" style="margin-top:4px"></div>
   </div>
@@ -159,9 +161,9 @@
 
   <div class="card">
     <h3>Profile</h3>
-    <label class="f">Preset <select id="preset"></select></label>
-    <p class="note" style="margin:2px 0 6px">Shares are of each stroke (or groove), from its edge (0%) to its middle (100%), so they look the same on thin and thick strokes.</p>
-    <label class="f slider" title="How far in from the edge the wall reaches the floor. 100 = the walls meet in the middle (a V, or a U with a rounded floor).">
+    <label class="f exact-hide">Preset <select id="preset"></select></label>
+    <p class="note exact-hide" style="margin:2px 0 6px">Shares are of each stroke (or groove), from its edge (0%) to its middle (100%), so they look the same on thin and thick strokes.</p>
+    <label class="f slider exact-hide" title="How far in from the edge the wall reaches the floor. 100 = the walls meet in the middle (a V, or a U with a rounded floor).">
       Wall width (%) <input id="wallPct" type="range" min="5" max="100" value="60"><output for="wallPct"></output></label>
     <div id="smoothEdges">
       <label class="f slider" title="How much of the wall curves over at the top. 0 is a sharp edge.">
@@ -177,20 +179,20 @@
       <label class="f" title="Real fillet on the top edges, made by Fusion after the cut. 0 leaves them perfectly sharp.">Top edge fillet (mm) <input id="rimFilletMm" type="number" value="0" min="0" step="0.02"></label>
       <label class="f" title="Real fillet where the walls meet the floor. 0 leaves the corner sharp.">Floor fillet (mm) <input id="floorFilletMm" type="number" value="0" min="0" step="0.02"></label>
     </div>
-    <label class="f slider" title="Positive raises a ridge down the middle of each stroke (V becomes W; 100 reaches the surface). Negative sinks the middle deeper (a U).">
+    <label class="f slider exact-hide" title="Positive raises a ridge down the middle of each stroke (V becomes W; 100 reaches the surface). Negative sinks the middle deeper (a U).">
       Dish ↔ ridge (%) <input id="centrePct" type="range" min="-100" max="100" value="0"><output for="centrePct"></output></label>
-    <label class="f slider" title="How much of the stroke the ridge or dish spans.">
+    <label class="f slider exact-hide" title="How much of the stroke the ridge or dish spans.">
       Ridge width (%) <input id="centreWidth" type="range" min="5" max="100" value="50"><output for="centreWidth"></output></label>
-    <label class="f slider" title="0 rounded top, 50 a sharp point, 100 a knife edge.">
+    <label class="f slider exact-hide" title="0 rounded top, 50 a sharp point, 100 a knife edge.">
       Ridge sharpness <input id="centreSharp" type="range" min="0" max="100" value="50"><output for="centreSharp"></output></label>
-    <label class="f slider" title="0: every stroke full depth. 100: depth follows stroke width, as a V-bit cuts.">
+    <label class="f slider exact-hide" title="0: every stroke full depth. 100: depth follows stroke width, as a V-bit cuts.">
       Thin strokes shallower <input id="thinPct" type="range" min="0" max="100" value="0"><output for="thinPct"></output></label>
-    <label class="f" title="Moves the edges out from (or in from) the letter outlines.">Grow letters (mm) <input id="growMm" type="number" value="0" step="0.02"></label>
-    <label class="f" title="A final blur over everything; never less than half the resolution.">Smoothing (mm) <input id="smoothMm" type="number" value="0.02" min="0" step="0.01"></label>
-    <label class="f" title="Control-point spacing. Auto fits 8 across half a typical stroke, within the point budget.">Resolution (mm)
+    <label class="f exact-hide" title="Moves the edges out from (or in from) the letter outlines.">Grow letters (mm) <input id="growMm" type="number" value="0" step="0.02"></label>
+    <label class="f exact-hide" title="A final blur over everything; never less than half the resolution.">Smoothing (mm) <input id="smoothMm" type="number" value="0.02" min="0" step="0.01"></label>
+    <label class="f exact-hide" title="Control-point spacing. Auto fits 8 across half a typical stroke, within the point budget.">Resolution (mm)
       <span class="row"><input id="resMm" type="number" value="0.05" min="0.01" step="0.01"><input id="resAuto" type="checkbox" checked> Auto</span></label>
-    <canvas id="profile" class="view" title="Cross-section through a typical stroke, as it will be made. Dots are control points."></canvas>
-    <div class="note" id="profileNote"></div>
+    <canvas id="profile" class="view exact-hide" title="Cross-section through a typical stroke, as it will be made. Dots are control points."></canvas>
+    <div class="note exact-hide" id="profileNote"></div>
   </div>
 </section>
 
@@ -208,20 +210,20 @@
     </label>
     <label class="f" title="Space between the text and the panel's edge.">Padding (mm) <input id="panelPadMm" type="number" value="1" min="0" step="0.1"></label>
     <label class="f" id="panelRadiusRow" title="Corner radius for the rounded rectangle.">Corner radius (mm) <input id="panelRadiusMm" type="number" value="0.8" min="0" step="0.1"></label>
-    <label class="f" title="Sideways width of the panel's edge slope.">Edge width (mm) <input id="panelEdgeMm" type="number" value="0.3" min="0.01" step="0.05"></label>
+    <label class="f exact-hide" title="Sideways width of the panel's edge slope.">Edge width (mm) <input id="panelEdgeMm" type="number" value="0.3" min="0.01" step="0.05"></label>
     <label class="f" id="plateRow" title="How far the plate stands above the surface.">Plate height (mm) <input id="plateMm" type="number" value="0.4" min="0" step="0.05"></label>
-    <label class="f" title="A raised rim round the panel. 0 for none.">Lip height (mm) <input id="lipMm" type="number" value="0" min="0" step="0.05"></label>
-    <label class="f">Lip width (mm) <input id="lipWidthMm" type="number" value="0.5" min="0.05" step="0.05"></label>
+    <label class="f exact-hide" title="A raised rim round the panel. 0 for none.">Lip height (mm) <input id="lipMm" type="number" value="0" min="0" step="0.05"></label>
+    <label class="f exact-hide">Lip width (mm) <input id="lipWidthMm" type="number" value="0.5" min="0.05" step="0.05"></label>
   </div>
 
-  <div class="card">
+  <div class="card exact-hide">
     <h3>Drop shadow</h3>
     <label class="f" title="A shallow cut beside the letters, so they look lifted. 0 for none. Not used with the panel styles.">Depth (mm) <input id="shadowMm" type="number" value="0" min="0" step="0.05"></label>
     <label class="f" title="How far the shadow sits to the right, in the text's own direction.">Offset right (mm) <input id="shadowXMm" type="number" value="0.25" step="0.05"></label>
     <label class="f" title="How far the shadow sits down, in the text's own direction.">Offset down (mm) <input id="shadowYMm" type="number" value="0.25" step="0.05"></label>
   </div>
 
-  <div class="card">
+  <div class="card exact-hide">
     <h3>Texture</h3>
     <label class="f">Pattern
       <select id="texture">
@@ -237,7 +239,7 @@
     <label class="f">Angle (°) <input id="texAngle" type="number" value="45" step="5"></label>
   </div>
 
-  <div class="card">
+  <div class="card exact-hide">
     <h3>Depth variation</h3>
     <label class="f" title="Depth at the start of the text, as a share of the full depth.">Start (%) <input id="fadeStart" type="number" value="100" min="0" step="10"></label>
     <label class="f" title="Depth at the end of the text.">End (%) <input id="fadeEnd" type="number" value="100" min="0" step="10"></label>
@@ -270,15 +272,18 @@
 <footer>
   <div class="opts">
     <label class="check" title="Shows the result in Fusion as you change things, without changing the design."><input id="live" type="checkbox" checked> Live preview</label>
-    <label class="check" title="Draw the whole body in the preview. Off: just the text area, so you can see how deep it goes. Also off while you have hidden the body yourself."><input id="wholeBody" type="checkbox" checked> Whole body in preview</label>
+    <label class="check exact-hide" title="Draw the whole body in the preview. Off: just the text area, so you can see how deep it goes. Also off while you have hidden the body yourself."><input id="wholeBody" type="checkbox" checked> Whole body in preview</label>
     <label class="check" title="Replace what the last Generate made instead of adding to it."><input id="replace" type="checkbox" checked> Replace previous</label>
-    <label class="check" id="singleRow" title="One face instead of many small ones (smooth surface). Same shape; far slower for big text."><input id="singleFace" type="checkbox"> One face (slow)</label>
+    <label class="check exact-hide" id="singleRow" title="One face instead of many small ones (smooth surface). Same shape; far slower for big text."><input id="singleFace" type="checkbox"> One face (slow)</label>
   </div>
   <button id="generate" class="primary">Generate</button>
   <div id="status"></div>
 </footer>
 
 <script src="google-fonts.js"></script>
+<script src="vendor/opentype.min.js"></script>
+<script src="vendor/paper-core.min.js"></script>
+<script src="outlines.js"></script>
 <script>
 // ===========================================================================
 // Settings
@@ -460,9 +465,12 @@ function showSliderValues() {
 // Show only the fields that matter for this mode and style.
 function showRelevant() {
   const style = $("style").value;
-  const sharp = mode === "sharp";
-  $("smoothEdges").classList.toggle("hidden", sharp);
-  $("sharpEdges").classList.toggle("hidden", !sharp);
+  const sharp = mode === "sharp", exactMode = mode === "exact";
+  document.body.classList.toggle("exact", exactMode);
+  for (const o of $("style").options) o.disabled = exactMode && !EXACT_STYLES.includes(o.value);
+  $("panelShape").querySelector('[value="hug"]').disabled = exactMode;
+  $("smoothEdges").classList.toggle("hidden", sharp || exactMode);
+  $("sharpEdges").classList.toggle("hidden", !(sharp || exactMode));
   $("singleRow").classList.toggle("hidden", sharp);
   $("outlineFields").classList.toggle("hidden", style !== "outline" && style !== "halo");
   $("groovePosRow").classList.toggle("hidden", style !== "outline");
@@ -475,7 +483,9 @@ function showRelevant() {
     : "Used by the \"background sunk\" and \"raised plate\" styles.";
   $("plateRow").classList.toggle("hidden", style !== "plate");
   $("panelRadiusRow").classList.toggle("hidden", $("panelShape").value !== "rounded");
-  $("modeNote").textContent = sharp
+  $("modeNote").textContent = exactMode
+    ? "The letters' own outlines from the font file, embossed into the body by Fusion: exact edges, quick, and an editable group in the timeline. Walls go straight in; round the edges with fillets below. Needs a Google font."
+    : sharp
     ? "Cut into (or added to) the body with exact sharp edges. Walls run straight from the top edge to the floor; round the edges with real fillets below."
     : "A separate surface that blends into the cylinder; every edge is a curve.";
   for (const b of $("modeSeg").children) b.classList.toggle("on", b.dataset.value === mode);
@@ -1271,6 +1281,117 @@ function bilinear(img, W, H, x, y) {
 }
 
 // ===========================================================================
+// Exact mode: the letters' own outlines (see outlines.js), embossed by Fusion
+// ===========================================================================
+
+const EXACT_STYLES = ["sunk", "raised", "background", "plate"];
+const fontFiles = new Map();   // "family|weight" -> Promise<opentype font>
+
+// The font file comes through Fusion, which fetches it from Google Fonts
+// (a page can't ask Google for the TTF files) and keeps it on disk.
+function fontFor(p) {
+  const key = p.family + "|" + p.weight;
+  if (!fontFiles.has(key)) {
+    const loading = (async () => {
+      if (!inFusion()) throw new Error("Exact mode reads the font file through Fusion.");
+      const reply = JSON.parse(await adsk.fusionSendData("font", JSON.stringify({ family: p.family, weight: p.weight })));
+      if (!reply.ok) throw new Error(reply.message);
+      const text = atob(reply.data);
+      const bytes = new Uint8Array(text.length);
+      for (let i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i);
+      return parseFont(bytes.buffer);
+    })();
+    loading.catch(() => fontFiles.delete(key));
+    fontFiles.set(key, loading);
+  }
+  return fontFiles.get(key);
+}
+
+// A panel round the ink as a contour of cubic Béziers, like the letters':
+// centred on the ink, half-widths hx and hy, anticlockwise. Arcs are the
+// usual four-curve circle, within 0.03% of the radius.
+function panelOutline(p, hx, hy) {
+  const k = 0.5522847498;
+  let rx, ry;
+  if (p.panelShape === "oval") { rx = hx; ry = hy; }
+  else if (p.panelShape === "capsule") { rx = ry = Math.min(hx, hy); }
+  else if (p.panelShape === "rect") { rx = ry = 0; }
+  else { rx = ry = Math.min(p.panelRadiusMm, hx, hy); }
+  const out = [];
+  let x = hx, y = -hy + ry;
+  out.push(x, y);
+  const line = (x1, y1) => {
+    if (Math.hypot(x1 - x, y1 - y) < 1e-9) return;
+    out.push(x + (x1 - x) / 3, y + (y1 - y) / 3, x + 2 * (x1 - x) / 3, y + 2 * (y1 - y) / 3, x1, y1);
+    x = x1; y = y1;
+  };
+  // A quarter arc round (cx, cy) to (x1, y1).
+  const arc = (cx, cy, x1, y1) => {
+    if (rx <= 0 || ry <= 0) { x = x1; y = y1; return; }
+    out.push(x + k * (x1 - cx), y + k * (y1 - cy), x1 + k * (x - cx), y1 + k * (y - cy), x1, y1);
+    x = x1; y = y1;
+  };
+  line(hx, hy - ry);            arc(hx - rx, hy - ry, hx - rx, hy);
+  line(-hx + rx, hy);           arc(-hx + rx, hy - ry, -hx, hy - ry);
+  line(-hx, -hy + ry);          arc(-hx + rx, -hy + ry, -hx + rx, -hy);
+  line(hx - rx, -hy);           arc(hx - rx, -hy + ry, hx, -hy + ry);
+  return out;
+}
+
+async function exactShape(p) {
+  if (!EXACT_STYLES.includes(p.style)) {
+    throw new Error("Exact mode does letters sunk or raised, a sunk background or a raised plate.");
+  }
+  if (!(p.depthMm > 0)) throw new Error("The depth must be above zero.");
+  if (!(p.heightMm > 0)) throw new Error("Text height must be above zero.");
+  const out = textOutlines(await fontFor(p), p);
+  const shape = { exact: true, style: p.style, depthMm: p.depthMm, plateMm: p.plateMm,
+                  contours: out.contours, panel: null, widthMm: out.widthMm, heightMm: out.heightMm };
+  if (p.style === "background" || p.style === "plate") {
+    if (p.style === "plate" && !(p.plateMm > 0)) throw new Error("The plate height must be above zero.");
+    const hx = out.widthMm / 2 + p.panelPadMm, hy = out.heightMm / 2 + p.panelPadMm;
+    shape.panel = panelOutline(p, hx, hy);
+    shape.widthMm = 2 * hx;
+    shape.heightMm = 2 * hy;
+  }
+  return shape;
+}
+
+// The outlines filled, as they'll be made: darker for what goes in, lighter
+// for what stands up, on the surface's grey.
+function drawOutlines(shape) {
+  const c = $("heightmap");
+  const pad = 6;
+  const scale = Math.min(600 / shape.widthMm, 300 / shape.heightMm);
+  c.width = Math.ceil(shape.widthMm * scale + 2 * pad);
+  c.height = Math.ceil(shape.heightMm * scale + 2 * pad);
+  const ctx = c.getContext("2d");
+  const toPath = contours => {
+    const path = new Path2D();
+    for (const q of contours) {
+      const X = i => c.width / 2 + q[i] * scale, Y = i => c.height / 2 - q[i + 1] * scale;
+      path.moveTo(X(0), Y(0));
+      for (let i = 2; i < q.length; i += 6) path.bezierCurveTo(X(i), Y(i), X(i + 2), Y(i + 2), X(i + 4), Y(i + 4));
+      path.closePath();
+    }
+    return path;
+  };
+  const surface = "#8a8d93", sunk = "#45484e", up = "#c9ccd2";
+  ctx.fillStyle = surface;
+  ctx.fillRect(0, 0, c.width, c.height);
+  if (shape.panel) {
+    ctx.fillStyle = shape.style === "plate" ? up : sunk;
+    ctx.fill(toPath([shape.panel]));
+    ctx.fillStyle = shape.style === "plate" ? sunk : surface;
+  } else {
+    ctx.fillStyle = shape.style === "raised" ? up : sunk;
+  }
+  ctx.fill(toPath(shape.contours), "nonzero");
+  $("info").textContent = `${shape.widthMm.toFixed(1)} × ${shape.heightMm.toFixed(1)} mm, ` +
+    `${shape.contours.length} outline${shape.contours.length === 1 ? "" : "s"} from the font file`;
+}
+
+// ===========================================================================
 // Pictures in the palette
 // ===========================================================================
 
@@ -1416,7 +1537,7 @@ async function mapFor(block) {
   const p = blockParams(block);
   const key = mapKeyOf(p);
   if (key !== block.mapKey) {
-    block.map = await heightMap(p);
+    block.map = p.mode === "exact" ? await exactShape(p) : await heightMap(p);
     block.mapKey = key;
     block.mapId++;
   }
@@ -1431,6 +1552,10 @@ function encode(values) {
 }
 
 function mapMessage(map) {
+  if (map.exact) {
+    return { exact: true, style: map.style, depthMm: map.depthMm, plateMm: map.plateMm,
+             contours: map.contours, panel: map.panel, widthMm: map.widthMm, heightMm: map.heightMm };
+  }
   const base = { nu: map.nu, nv: map.nv, widthMm: map.widthMm, heightMm: map.heightMm };
   if (map.layers) {
     base.layers = map.layers.map(l => ({ cut: l.cut, low: l.low, high: l.high, wall: encode(l.wall),
@@ -1490,6 +1615,10 @@ async function refreshPictures() {
   saveForm();
   const block = blocks[current];
   const map = await mapFor(block);
+  if (map.exact) {
+    drawOutlines(map);
+    return;
+  }
   drawHeightMap(map);
   drawProfile(blockParams(block), map);
 }
@@ -1518,6 +1647,7 @@ async function generate() {
     if (!reply.ok) return say(reply.message, true);
     let text = `Done in ${reply.seconds} s: ${reply.summary}.`;
     if (mode === "smooth") text += " The new surface sits in the body, so hide the body to see it.";
+    if (mode === "exact") text += " It's one group in the timeline.";
     if (reply.warning) text += "\n" + reply.warning;
     say(text);
   } finally {
@@ -1555,12 +1685,20 @@ for (const tab of document.querySelectorAll("nav.tabs button")) {
   tab.onclick = () => {
     for (const t of document.querySelectorAll("nav.tabs button")) t.classList.toggle("on", t === tab);
     for (const s of document.querySelectorAll("section[data-tab]")) s.classList.toggle("hidden", s.dataset.tab !== tab.dataset.tab);
-    if (tab.dataset.tab === "shape" && blocks[current].map) drawProfile(blockParams(blocks[current]), blocks[current].map);
+    if (tab.dataset.tab === "shape" && blocks[current].map && !blocks[current].map.exact) drawProfile(blockParams(blocks[current]), blocks[current].map);
   };
 }
 
 for (const b of $("modeSeg").children) {
-  b.onclick = () => { mode = b.dataset.value; showRelevant(); schedule(); };
+  b.onclick = () => {
+    mode = b.dataset.value;
+    if (mode === "exact") {
+      if (!EXACT_STYLES.includes($("style").value)) $("style").value = "sunk";
+      if ($("panelShape").value === "hug") $("panelShape").value = "rounded";
+    }
+    showRelevant();
+    schedule();
+  };
 }
 
 function applyPreset() {

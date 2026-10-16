@@ -462,15 +462,20 @@ def fillet(design, body, frame, places, convex_radius, concave_radius):
     """Round the sharp edges where the walls meet the surface, the floors and
     the tops: outside corners (the top of a cut, the top of a raise) by
     convex_radius, inside ones (a cut's floor, a raise's foot) by
-    concave_radius, in cm; 0 leaves them sharp.
+    concave_radius, in cm; 0 leaves them sharp. Returns the fillet feature,
+    or None if there was nothing to round."""
+    convex, concave = fillet_edges(body, frame, places)
+    return add_fillet(design, convex, concave, convex_radius, concave_radius)
+
+
+def fillet_edges(body, frame, places):
+    """The edges fillet rounds: (outside corners, inside corners), as lists.
 
     An edge qualifies when one of its faces is a cylinder about the same
-    axis, the other is one of the walls (a NURBS face), and it lies within
-    one of the text patches (`places`), so the body's own edges are left
-    alone. Returns the fillet feature, or None if there was nothing to
-    round."""
+    axis, the other is one of the walls (any other face: an Emboss makes
+    straight walls flat), and it lies within one of the text patches
+    (`places`), so the body's own edges are left alone."""
     cylinder_type = adsk.core.SurfaceTypes.CylinderSurfaceType
-    nurbs_type = adsk.core.SurfaceTypes.NurbsSurfaceType
     axis = frame["axis"]
 
     def coaxial(f):
@@ -486,14 +491,14 @@ def fillet(design, body, frame, places, convex_radius, concave_radius):
                 return True
         return False
 
-    sets = {True: adsk.core.ObjectCollection.create(), False: adsk.core.ObjectCollection.create()}
+    sets = {True: [], False: []}
     for e in body.edges:
         if e.faces.count != 2:
             continue
         a, b = e.faces.item(0), e.faces.item(1)
-        if coaxial(a) and b.geometry.surfaceType == nurbs_type:
+        if coaxial(a) and not coaxial(b):
             cyl, wall = a, b
-        elif coaxial(b) and a.geometry.surfaceType == nurbs_type:
+        elif coaxial(b) and not coaxial(a):
             cyl, wall = b, a
         else:
             continue
@@ -512,14 +517,24 @@ def fillet(design, body, frame, places, convex_radius, concave_radius):
         _, n_cyl = cyl.evaluator.getNormalAtPoint(point)
         _, n_wall = wall.evaluator.getNormalAtPoint(point)
         convex = _dot(_cross(_tuple(n_cyl), _tuple(n_wall)), tangent) > 0
-        sets[convex].add(e)
+        sets[convex].append(e)
+    return sets[True], sets[False]
 
+
+def add_fillet(design, convex, concave, convex_radius, concave_radius):
+    """One fillet feature: the convex edges by convex_radius, the concave by
+    concave_radius (cm; 0 leaves them). None if there is nothing to round.
+    Every qualifying edge is passed in, so tangent chaining is left off: it
+    adds nothing, and took three times as long."""
     fillet_input = design.rootComponent.features.filletFeatures.createInput()
     any_edges = False
-    for convex, size in ((True, convex_radius), (False, concave_radius)):
-        if size > 0 and sets[convex].count:
+    for edges, size in ((convex, convex_radius), (concave, concave_radius)):
+        if size > 0 and edges:
+            collection = adsk.core.ObjectCollection.create()
+            for e in edges:
+                collection.add(e)
             fillet_input.edgeSetInputs.addConstantRadiusEdgeSet(
-                sets[convex], adsk.core.ValueInput.createByReal(size), True)
+                collection, adsk.core.ValueInput.createByReal(size), False)
             any_edges = True
     if not any_edges:
         return None

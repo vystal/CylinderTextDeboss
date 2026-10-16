@@ -3,9 +3,9 @@
     "type": "addin",
     "author": "",
     "description": {
-        "": "Puts text on a cylindrical face: sunk, raised, outlined, in a panel or on a plate, as a smooth NURBS surface or cut into the body with sharp edges. Any Google font."
+        "": "Puts text on a cylindrical face: sunk, raised, outlined, in a panel or on a plate, as a smooth NURBS surface, cut into the body with sharp edges, or embossed exactly from the font outlines. Any Google font."
     },
-    "version": "0.2.0",
+    "version": "0.3.0",
     "supportedOS": "windows|mac",
     "editEnabled": true,
     "runOnStartup": false
